@@ -1,0 +1,99 @@
+reset;
+
+model csp_bender.mod;
+data examples/example_2D.ampl;
+
+option solver cplex;
+option cplex_options 'mipdisplay 2';
+
+problem Master:
+    x, theta, Master_Objective,
+    Primary_Suppressed, Table_Constraints,
+    Optimality_Cuts, Feasibility_Cuts;
+
+problem Sub:
+    u_lower, u_upper, Sub_Objective, Sub_Dual;
+
+# Initialization
+let nCUT := 0;
+let theta := 0;
+
+# Start with only primary cells suppressed
+let {j in CELLS} x_fixed[j] := is_p[j];
+param upper_bound;
+param lower_bound;
+let upper_bound := Infinity;
+let lower_bound := -Infinity;
+
+param tolerance := 1e-6;
+param max_iterations := 100;
+
+printf "\n============================================\n";
+printf "BENDERS DECOMPOSITION FOR CSP (CORRECTED)\n";
+printf "Number of cells: %d\n", ncells;
+printf "Number of primary cells: %d\n", npcells;
+printf "Number of constraints: %d\n\n", nconstraints;
+printf "============================================\n";
+
+repeat {
+
+    printf "\n--- ITERATION %d ---\n", nCUT + 1;
+
+    # Solve subproblem
+    solve Sub;
+
+    if Sub.result = "unbounded" then {
+
+        printf "Subproblem UNBOUNDED → feasibility cut\n";
+
+        let nCUT := nCUT + 1;
+        let cut_type[nCUT] := "feasibility";
+
+        let {i in PCELLS} cut_u_lower[i,nCUT] := u_lower[i];
+        let {i in PCELLS} cut_u_upper[i,nCUT] := u_upper[i];
+
+    } else {
+
+        printf "Subproblem objective = %.6f\n", Sub_Objective;
+        let upper_bound :=min(upper_bound,??);
+
+        let nCUT := nCUT + 1;
+        let cut_type[nCUT] := "optimality";
+
+        let {i in PCELLS} cut_u_lower[i,nCUT] := u_lower[i];
+        let {i in PCELLS} cut_u_upper[i,nCUT] := u_upper[i];
+    }
+
+    # Solve master
+    printf "Solving master with %d cuts...\n", nCUT;
+    solve Master;
+
+    let lower_bound := Master_Objective;
+
+    printf "Lower bound = %.6f\n", lower_bound;
+    printf "Upper bound = %.6f\n", upper_bound;
+    printf "Gap = %.6f\n", upper_bound - lower_bound;
+
+    # Update x
+    let {j in CELLS} x_fixed[j] := x[j];
+
+    printf "Suppressed cells: ";
+    for {j in CELLS: x[j] > 0.5} {
+        printf "%d ", j;
+    }
+    printf "\n";
+
+    if upper_bound - lower_bound <= tolerance then {
+        printf "\n============================================\n";
+        printf "SOLVED\n";
+        printf "Optimal value = %.6f\n", upper_bound;
+        printf "Cuts added = %d\n", nCUT;
+        printf "============================================\n";
+        break;
+    }
+
+    if nCUT >= max_iterations then {
+        printf "\nWARNING: Maximum iterations reached\n";
+        break;
+    }
+};
