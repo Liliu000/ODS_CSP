@@ -13,9 +13,10 @@ xcoef[l],  begconst[i] ≤ l ≤ begconst[i+1]-1  gives the columns of A where t
 Instance example_2D.ampl contains a 5x6 bidimensional table (including total row and column), where the cells are sorted rowwise, assuming that the total row and total column are the first row and column. The other files contain two additional small instances.
  
 # Structure
-example: csp problem data examples
-csp_benders.mod: contains subproblem and master problem (needs to specify bender cuts-doesnot run)
-csp_benders.run: script to implement solution
+- example: csp problem data examples
+-   csp_benders.mod: contains subproblem and master problem (needs to specify bender cuts-doesnot run)
+-   csp_benders.run: script to implement solution
+
 ONLY DEV: 
 -   csp_sol_gemini.txt: solution to example_2D of gemini
 -   Advice teacher: First tries to debug ample use unitary cost 
