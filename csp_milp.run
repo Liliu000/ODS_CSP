@@ -1,0 +1,26 @@
+# Reset the AMPL environment
+reset;
+
+# Load the model
+model csp_milp.mod;
+
+# Load the data
+data examples/small.ampl;
+
+# Specify the solver (Gurobi or CPLEX are recommended for MIP)
+option solver cplex;
+
+# Solve the problem
+solve;
+
+printf "\n========================================\n";
+printf "OPTIMIZATION COMPLETE\n";
+printf "Total Cost (Secondary Suppressions): %g\n", Total_Cost;
+printf "========================================\n";
+
+printf "\nSuppressed Cells (y_i = 1):\n";
+printf "%-10s | %-10s | %-10s\n", "Cell ID", "Cost", "Is Primary";
+for {i in CELLS: y[i] > 0.5} {
+    printf "%-10d | %-10d | %-10d\n", i, c[i], is_p[i];
+}
+printf "========================================\n";

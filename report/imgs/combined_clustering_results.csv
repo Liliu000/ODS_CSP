@@ -1,0 +1,4 @@
+Algorithm,Time (s)_Iris,ARI_Iris,Time (s)_Satimage,ARI_Satimage
+MST,0.0403,0.5657,2.4695,0.0029
+K-Means,2.2885,0.8857,0.0187,0.5245
+K-Medoids,1.281,0.8512,332.172,0.543

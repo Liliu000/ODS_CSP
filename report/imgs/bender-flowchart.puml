@@ -1,0 +1,52 @@
+@startuml
+title Benders Decomposition for Cell Suppression Problem (CSP)
+
+start
+
+:Define Parameters;
+note right
+  - Table values (a) and linear relations (Aa=b)
+  - Set of primary sensitive cells (P)
+  - Protection levels (lpl, upl)
+end note
+
+:Initialize Master Problem;
+note right
+  Initially unrestricted or with basic bounds
+end note
+
+repeat
+  :Solve Master Problem (MILP);
+  note right
+    Minimize cost: Σ w_i * y_i
+    Result: Current suppression pattern (y)
+  end note
+
+  partition "Subproblem Verification (for each p ∈ P)" {
+    :Solve Dual Subproblem (Auditor);
+    note right
+      Find min/max deviations (x^l,p and x^u,p) 
+      given the current suppressions (y)
+    end note
+
+    if (Is protection sufficient?) then (Yes)
+      :Sensitive cell p is protected;
+    else (No)
+      :Generate Benders Cut (Restriction);
+      note left
+        Identify extreme rays/vertices of 
+        dual polyhedron U 
+      end note
+      :Add Cut to Master Problem;
+    endif
+  }
+
+repeat while (Any sensitive cell unprotected?) is (Yes)
+
+:Finalize Optimal Suppression Pattern (S);
+note right
+  Set of primary (P) and secondary (S) cells
+end note
+
+stop
+@enduml

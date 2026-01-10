@@ -1,0 +1,306 @@
+\documentclass[11pt,a4paper]{article}
+
+% =============================
+% PACKAGES
+% =============================
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{graphicx}      % For figures
+\usepackage{amsmath, amssymb}  % Math symbols
+\usepackage{booktabs}      % Nice tables
+\usepackage{float}         % Control float position
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{hyperref}      % Clickable references
+\usepackage{xcolor}        % Colors
+\usepackage{enumitem}      % Better lists
+\usepackage{url}           % URLs in text
+\usepackage{listings}      % Code listings
+\usepackage{appendix}      % Appendices
+\usepackage{hyperref}
+\usepackage{csvsimple}
+\usepackage{xcolor}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+
+\lstset{style=mystyle}
+
+% =============================
+% TITLE INFORMATION
+% =============================
+\title{\textbf{CSP-Bender Problem}\\
+\large Formulation, Solution in AMPL, and Comparison with Heuristic Methods}
+
+\author{
+  \textbf{Liliu Martinez} \and
+  \textbf{Enrique Takiguchi} \\  
+%   \small Master's in Statistics and Operations Research, IT2 Track \\
+%   \small University of [Your University] \\
+%   \small Date: \today
+}
+
+\date{}
+
+% =============================
+% DOCUMENT
+% =============================
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+\newpage
+
+% =============================
+% 1. INTRODUCTION
+% =============================
+\section{Introduction}
+\label{sec:intro}
+
+
+
+\textbf{Objectives:}
+\begin{itemize}[noitemsep]
+  \item TODO
+  
+\end{itemize}
+
+% =============================
+% 2. PROBLEM DESCRIPTION AND FORMULATION
+% =============================
+\section{Problem Description and Formulation}
+\label{sec:prob-descr}
+
+\subsection{Basic definitions}
+\begin{itemize}
+\item \textbf{Microdata}: a file $V$ of $s$ individuals and $t$ variables, as a
+matrix $s \times t$ where $V_{ij}$ is the value of variable $j$ for individual $i$.
+\item \textbf{Tabular data}: tables generated crossing one ore more categorical variables 
+from microdata.
+These can be multidimensional tables holding frequency or magnitude information.\\
+The table will have $n$ cells which will have to verify $m$ linear constraints.\\
+The cells in the table are bounded by an upper and lower limit: $u<a_i<l$
+\item \textbf{Protection levels from the p\% rule}:
+
+An attacker might estimate the intervals of a cell
+$[\overline{a}_p,  \underbar{$a$}_p]$, to assert these are not informative enough,
+we must define some lower and upper protection level bounds to ensure this interval
+fully contains the interval
+\begin{equation}
+  \label{eq:prot-lvls}
+  [\overline{a}_p,  \underbar{$a$}_p]\in[a_p-lpl_p, a_p+upl_p]
+\end{equation}
+\end{itemize}
+ 
+\subsection{CSP Formulation}
+
+The Cell Suppression Problem seeks to hide sensitive (primary, $\mathcal{P}$) cells while minimizing
+the suppression cost. Hiding only primary cells would not be enough since we could still infer
+information about them from the rest of cells, thus, a number of secondary cells ($\mathcal{S}$) will
+also be suppresed.
+
+CSP computes the set $\mathcal{S}$ of secondary cells to be suppressed such that for all $p\in\mathcal{P}$, 
+Equation \ref{eq:prot-lvls} is satisfied, where $\overline{a}_p,  \underbar{$a$}_p$ can be obtained with a minimization problem.
+
+The CSP problem can be formulated as a Mixed-Integer Linear Programming (MILP) problem.
+The MILP will be a minimization problem in terms of the following variables
+\begin{itemize}
+  \item $y_i\in\{0,1\}, i=1, ...n$: Indicates if a cell $i$ is suppressed (1) or not (0)
+  \item $x^{l,p}\in \mathbb{R}^n$: Lower deviation of the primary cell $p$ from its original value
+  \item $x^{u,p}\in \mathbb{R}^n$: Upper deviation of the primary cell $p$ from its original value
+\end{itemize}
+
+MILP formulation for CSP:
+\begin{align*}
+\min \quad & \sum_{i=1}^{n} w_i y_i \\
+\text{s.to} \quad & \\
+& \left. \begin{array}{rll}
+(l_i - a_i)y_i \leq & \begin{array}{l} Ax^{l,p} \\ x_i^{l,p} \\ x_p^{l,p} \end{array} & \begin{array}{l} = 0 \\ \leq (u_i - a_i)y_i \\ \leq -lpl_p \end{array} \quad i = 1, \dots, n \\ \\
+(l_i - a_i)y_i \leq & \begin{array}{l} Ax^{u,p} \\ x_i^{u,p} \\ x_p^{u,p} \end{array} & \begin{array}{l} = 0 \\ \leq (u_i - a_i)y_i \\ \geq upl_p \end{array} \quad i = 1, \dots, n
+\end{array} \right\} \forall p \in \mathcal{P} \\
+& y_i \in \{0, 1\} \quad x\ge 0\quad i = 1, \dots, n,
+\end{align*}
+
+The problem with the MILP formulation is that it becomes infeasibly complex as the table grows large.
+
+The problem has:
+\begin{itemize}
+  \item $n$ binary variables and $2n\mathcal{P}$ continuous variables
+  \item $2(m+2n)|\mathcal{P}|$ constraints
+\end{itemize}
+
+\subsection{Benders decomposition}
+
+Benders decomposition partitions the problem into a master and subproblems, and
+iterates efficiently between them to find the optimal solution.
+\begin{itemize}
+  \item Master problem: focuses on the binary decisions ($y_i$), which determine whether a cell is published ($y_i=0$) or suppressed ($y_i=1$)
+  \item Subproblems: verify if the current suppression pattern chosen by the Master Problem actually provides the required protection levels ($lpl$ and $upl$) for each primary sensitive cell.
+\end{itemize}
+
+\textbf{Original Problem}
+
+Given the original problem: 
+
+\begin{align*}
+(P) = \quad \min \quad & c^T x + q^T y \\
+\text{s. to} \quad & Tx + Wy = h \\
+& x \in X \\
+& y \geq 0
+\end{align*}
+
+The two following problems are derivated:
+\begin{itemize}
+  \item \textbf{Master Formulation}
+  \begin{align*}
+  (BP_r) = \quad \min \quad & z \\
+  \text{s. to} \quad & z \geq c^T x + u^{i\top} (h - Tx) &  i \in I \subseteq \{1 \dots p\} \\
+  & v^{j\top} (h - Tx) \leq 0 & j \in J \subseteq \{1 \dots q\} \\
+  & x \in X.
+  \end{align*}
+  \item \textbf{Subproblem Formulation}
+  
+  \begin{align*}
+  (Q_D) = \quad \max \quad & u^T(h - Tx) \\
+  \text{s. to} \quad & W^T u \leq q \\
+  & u \in \mathbb{R}^m
+  \end{align*}
+\end{itemize}
+
+To take advantage of Benders decomposition we first reformulate the original MILP
+problem to an equivalent of Benders starting problem.
+
+\begin{align*}
+\min \quad & \sum_{i=1}^{n} w_i y_i \\
+\text{s. to} \quad & Ax^{l,p} = 0 & \forall p \in \mathcal{P} \\
+& Ax^{u,p} = 0 & \forall p \in \mathcal{P} \\
+& (l_i - a_i)y_i - x_i^{l,p} + s_{l,i}^{l,p} = 0 & i=1 \dots n, \forall p \in \mathcal{P} \\
+& (a_i - u_i)y_i + x_i^{l,p} + s_{u,i}^{l,p} = 0 & i=1 \dots n, \forall p \in \mathcal{P} \\
+& (l_i - a_i)y_i - x_i^{u,p} + s_{l,i}^{u,p} = 0 & i=1 \dots n, \forall p \in \mathcal{P} \\
+& (a_i - u_i)y_i + x_i^{u,p} + s_{u,i}^{u,p} = 0 & i=1 \dots n, \forall p \in \mathcal{P} \\
+& x_p^{l,p} + s_{p}^{l,p} = -lpl_p & \forall p \in \mathcal{P} \\
+& x_p^{u,p} - s_{p}^{u,p} = upl_p & \forall p \in \mathcal{P} \\
+& y_i \in \{0, 1\}, \quad x, s \geq 0
+\end{align*}
+
+Given that $y_i$ belongs to a restricted set and both $x$ and $s$ are only restricted to be positive,
+we take $y_i$ as the $x$ in Benders and $[x,s]$ as the $y$.
+
+
+
+% =============================
+% 3. DATASETS
+% =============================
+\section{Datasets}
+\label{sec:datasets}
+TODO
+
+\section{Implementation Details}
+
+% =============================
+% 9. REFERENCES
+% =============================
+\section{References}
+
+% load bibliography file
+% \bibliographystyle{plain}
+% \bibliography{citations}
+
+
+
+% \begin{itemize}
+%   \item Jain, A. K., and Dubes, R. C. (1988). \textit{Algorithms for Clustering Data}. Prentice Hall.
+%   \item Kaufman, L., and Rousseeuw, P. J. (1990). \textit{Finding Groups in Data: An Introduction to Cluster Analysis}.
+%   \item UCI Machine Learning Repository: \url{https://archive.ics.uci.edu/}
+%   \item Tocto Inga, P. M. (2012). \textit{Comparación de los algoritmos Prim y Kruskal [Tesis de licenciatura, Universidad Nacional de Ingeniería, Facultad de Ciencias]}. Universidad Nacional de Ingeniería.
+% \end{itemize}
+
+\newpage
+
+
+% =============================
+% APPENDIX
+% =============================
+
+
+
+% Listing of AMPL files
+\begin{appendix}
+\section{AMPL Files}
+\label{apdx:ampl-files}
+\begin{lstlisting}[language=Python, caption=\texttt{kmedoid.mod}]
+param n; # observations
+param k; # clusters
+set M:={1..n};
+
+param d{M,M};
+var x{M,M} binary;
+
+
+minimize f: sum{i in M}
+    sum{j in M} d[i,j]*x[i,j];
+
+subject to one_cluster{i in M}:
+    sum{j in M} x[i,j] = 1;
+
+subject to k_clusters:
+    sum{j in M} x[j,j] = k;
+
+subject to cluster_belongs{i in M, j in M}:
+    x[j,j] >= x[i,j];
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python, caption=\texttt{kmedoid.run}]
+# Reset enviroment
+reset;
+
+# Load model and data
+model kmedoids.mod;
+data kmedoids.dat;
+
+option solver cplex;
+solve;
+
+display _solve_elapsed_time;
+
+printf {i in M, j in M} "%s,%s,%i\n", i, j, x[i,j] > "x_matrix.csv";
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python, caption=Python function to generate \texttt{kmedoid.dat} ]
+def generate_dat(N, D, k, filename='AMPL/kmedoid.dat'):
+    with open(filename, 'w') as f:
+        f.write("#Define sets\n")
+        f.write(f"param n := {N};\n")
+        f.write(f"param k := {k};\n")
+
+        f.write("#Define parameters\n")
+        f.write(f"param d: {'\t'.join([str(j+1) for j in range(N)])} :=\n")
+        for i in range(N):
+            f.write(f" {i+1} " + ' '.join(f"{D[i][j]:.6f}" for j in range(N)) + "\n")
+        f.write(";\n")
+
+    \end{lstlisting}
+  \end{appendix}
+
+\end{document}

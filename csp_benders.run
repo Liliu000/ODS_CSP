@@ -1,6 +1,6 @@
 reset;
 
-model csp_bender.mod;
+model csp_benders.mod;
 data examples/example_2D.ampl;
 
 option solver cplex;

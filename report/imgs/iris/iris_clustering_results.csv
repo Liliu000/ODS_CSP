@@ -1,0 +1,4 @@
+Algorithm,Time (s),ARI
+MST,0.0403,0.5657
+K-Means,2.2885,0.8857
+K-Medoids,1.281,0.8512
