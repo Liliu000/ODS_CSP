@@ -19,6 +19,7 @@
 \usepackage{hyperref}
 \usepackage{csvsimple}
 \usepackage{xcolor}
+\usepackage{makecell}
 
 \definecolor{codegreen}{rgb}{0,0.6,0}
 \definecolor{codegray}{rgb}{0.5,0.5,0.5}
@@ -206,6 +207,89 @@ problem to an equivalent of Benders starting problem.
 
 Given that $y_i$ belongs to a restricted set and both $x$ and $s$ are only restricted to be positive,
 we take $y_i$ as the $x$ in Benders and $[x,s]$ as the $y$.
+
+The Original Problem now becomes:
+\begin{table}[h]
+\centering
+\begin{tabular}{ c c c }
+   & \textbf{c\textsuperscript{T}x} & \textbf{q\textsuperscript{T}y} \\
+  \textbf{Objective function (min)} & $w y$ & $+ 0 x^{l,p}+x^{u,p}$
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{c c c c}
+        \hline
+        \textbf{Constraint Type} & \textbf{Tx} & \textbf{+Wy} & \textbf{=h}\\
+        \hline
+        \textbf{Table Conservation} & 0 & \makecell[l]{$+ Ax^{l,p}$\\ $+ Ax^{u,p}$} & \makecell[l]{=b \\ =b} \\
+        \hline
+        \textbf{Lower Capacity} & \makecell[l]{$(l - a)y$\\ $(l - a)y$} &  \makecell[l]{$-x^{l,p}$\\ $-x^{u,p}$} & $\le 0$ \\
+        \hline
+        \textbf{Upper Capacity} & \makecell[l]{$(a - u)y$\\ $(a - u)y$} & \makecell[l]{$+ x^{l,p}$ \\ $+ x^{u,p}$} & $\le 0$ \\
+        \hline
+        \textbf{Protection Levels} & 0 & \makecell[l]{$x^{l,p}$\\ $x^{u,p}$} & \makecell[l]{ $\le -lpl$\\ $ \ge upl$}\\
+        \hline
+    \end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{ c c c }
+   & \textbf{$x \in X$} & \textbf{$y \geq 0$} \\
+  \textbf{Domain Constraints} & $y_i \in \{0, 1\}$ & $\quad x, s \geq 0$
+\end{tabular}
+\end{table}
+
+Primal Subproblem Q:
+subproblem as an optimization to see if the protection level can be reached given the fixed suppression $\bar{y}$:
+for each primary cell $p[j]$:
+\begin{align*}
+(Q_{lower}) = \quad \min \quad & x_{l,p[j]} \\
+\text{s. to} \quad & Ax_l = 0 [\lambda]\\
+& (l_i - a_i)\bar{y}_i \leq x_{l,i} [\mu_1]\\
+&  x_{l,i} \leq (u_i - a_i)\bar{y}_i [\mu_2]\\
+& Goal: Objective \quad value \leq -lpl_{p[j]}?
+\end{align*}
+\begin{align*}
+(Q_{upper}) = \quad \min \quad & x_{u,p[j]} \\
+\text{s. to} \quad & Ax_u = 0 [\lambda]\\
+& (l_i - a_i)\bar{y}_i \leq x_{u,i} [\mu_1]\\
+&  x_{u,i} \leq (u_i - a_i)\bar{y}_i [\mu_2]\\
+& Goal: Objective \quad value \leq -upl_{p[j]}?
+\end{align*}
+
+Dual of Subproblem Q:
+To ensure a suppression pattern is valid, you have to check if a primary cell is protected from "below" (someone trying to guess a value too low) and from "above" (someone trying to guess a value too high).
+Dual of Subproblem Q for each primary cell $p[j]$:
+\begin{align*}
+(Q_{lower}) = \quad \max \quad & \sum_{i=1}^{n}((l_i - a_i)\mu_{l,i} - (u_i-a_i)\mu_{u,i})\bar{y}_i  \\
+\text{s. to} \quad & A^T\lambda + \mu_l  - \mu_u = e_p \\
+& \mu_l \geq 0, \mu_u \geq 0, \lambda free
+\end{align*}
+If the optimal value of this objective is greater than $-lpl$, that means the pattern is insecure and we have to add a lower Benders cut to the Master Problem.
+\begin{align*}
+-lpl \geq \quad & \sum_{i=1}^{n}((l_i - a_i)\mu_{l,i} - (u_i-a_i)\mu_{u,i})y_i  \\
+\end{align*}
+
+\begin{align*}
+(Q_{upper}) = \quad \max \quad & \sum_{i=1}^{n}((u_i-a_i)\mu_{u,i}-(l_i - a_i)\mu_{l,i})\bar{y}_i  \\
+\end{align*}
+If the optimal value of this objective is less than $upl$, that means the pattern is insecure and we have to add an upper Benders cut to the Master Problem.
+\begin{align*}
+upl \leq \quad & \sum_{i=1}^{n}((u_i-a_i)\mu_{u,i}-(l_i - a_i)\mu_{l,i})y_i  \\
+\end{align*}
+If we have $P$ primary cells, we will have to solve $2P$ subproblems at each iteration of Benders decomposition.
+
+Master Problem: $\bar{\mu}_l, \bar{\mu}_u$ are fixed from the subproblem solutions.
+\begin{align*}
+(BP_r) = \quad \min \quad & \sum_{i=1}^{n}c_i x_i \\
+\text{s. to} \quad & y_p = 1 & \forall p \in \mathcal{P}\\
+& -lpl \geq  \sum_{i=1}^{n}((l_i - a_i)\mu_{l,i} - (u_i-a_i)\mu_{u,i})y_i   & for all cuts created in iterations\\
+& upl \leq \sum_{i=1}^{n}((u_i-a_i)\mu_{u,i}-(l_i - a_i)\mu_{l,i})y_i  & for all cuts created in iterations\\
+& y_i \in \{0, 1\}  
+\end{align*}
 
 
 
