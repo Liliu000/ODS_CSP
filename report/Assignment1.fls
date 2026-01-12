@@ -220,12 +220,12 @@ INPUT c:/texlive/2025/texmf-dist/fonts/tfm/jknappen/ec/tcrm1095.tfm
 INPUT c:/texlive/2025/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc
 INPUT c:/texlive/2025/texmf-dist/fonts/tfm/public/cm/cmbx8.tfm
 INPUT c:/texlive/2025/texmf-dist/fonts/tfm/public/cm/cmti10.tfm
-INPUT c:/texlive/2025/texmf-dist/tex/latex/listings/lstlang1.sty
-INPUT c:/texlive/2025/texmf-dist/tex/latex/listings/lstlang1.sty
-INPUT c:/texlive/2025/texmf-dist/tex/latex/listings/lstlang1.sty
 INPUT c:/texlive/2025/texmf-dist/fonts/tfm/public/cm/cmtt10.tfm
 INPUT c:/texlive/2025/texmf-dist/fonts/tfm/public/cm/cmtt9.tfm
 INPUT c:/texlive/2025/texmf-dist/fonts/tfm/public/cm/cmr9.tfm
+INPUT c:/texlive/2025/texmf-dist/tex/latex/listings/lstlang1.sty
+INPUT c:/texlive/2025/texmf-dist/tex/latex/listings/lstlang1.sty
+INPUT c:/texlive/2025/texmf-dist/tex/latex/listings/lstlang1.sty
 INPUT Assignment1.aux
 INPUT ./Assignment1.out
 INPUT ./Assignment1.out

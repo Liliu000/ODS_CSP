@@ -17,6 +17,10 @@ param violation_found binary default 0;
 param iteration default 0;
 param epsilon := 1e-7;
 param current_dual_val;
+suffix unbdd OUT;
+
+set cut_types{1..2} := {-1, 1};
+# -1 for lower protection, 1 for upper protection
 
 problem Master:
     y,
@@ -52,68 +56,43 @@ repeat {
     }
     printf "\n";
 
-    # 2. SUBPROBLEM LOOP (Slide 75, Step 3 & Slide 78, Step 4)
-    # Check every primary cell p for both Lower and Upper protection
-    for {j in P_INDEX} {
-        let p_index := p[j];
-        let L_or_U  := -1;
-        printf "\n primary cell %d \n", p_index;
-
-        # --- A. Check Lower Protection (Slide 76-77) ---
-        solve Dual_Problem;
-        let current_dual_val := Dual_Objective_Function;
-		
-		printf "\n DUAL Lower solution %d \n", current_dual_val;
-		# Check if the upper protection level is violated [cite: 293]
-        # Condition: upl_p must be <= dual_objective (max xp)
-        if current_dual_val > -plpl[j] + epsilon then {
-            let nCUT := nCUT + 1;
-            let violation_found := 1;
-            
-            # Store dual variables to build the cut in the next Master solve
-            for {i in CELLS} {
-                let mu_l[i, nCUT] := MU_L[i];
-                let mu_u[i, nCUT] := MU_U[i];
-            }
-            let protection_lvl_k[nCUT] := -plpl[j];
-            
-            printf "  -> Lower Violation found for primary %d (cell %d)\n", j, p[j];
-        }
-
-        # --- B. Check Upper Protection ---
-        let L_or_U  := 1;
-        
-        solve Dual_Problem;
-        let current_dual_val := Dual_Objective_Function;
-
-		printf "\nDual_Upper solution %d \n", current_dual_val;
-		/*for {i in CELLS} {
-			printf "\n %d mul_U: %d    muu_U: %d \n",i, mu_l_U[i], mu_u_U[i];
-		}*/
-        # Violation check (Equation 2, Slide 78):
-        # Condition is pupl <= Dual_Obj. If Dual_Obj < pupl, it is violated.
-        if current_dual_val < pupl[j] - epsilon then {
-            let nCUT := nCUT + 1;
-            let violation_found := 1;
-
-            # Store dual variables
-            for {i in CELLS} {
-                let mu_l[i, nCUT] := MU_L[i];
-                let mu_u[i, nCUT] := MU_U[i];
-            }
-
-			let protection_lvl_k[nCUT] := pupl[j];
-            printf "  -> Upper Violation found for primary %d (cell %d)\n", j, p[j];
-        }
+    # 2. SUBPROBLEM LOOP
+	for {i in 1..2, cut_type in cut_types[i]} {
+    	# Check every primary cell p for both Lower and Upper protection
+	    for {j in P_INDEX} {
+	        let p_index := p[j];
+	        let L_or_U  := cut_type;
+	        let PROTECTION_LVL := if cut_type == 1 then pupl[j] else plpl[j];
+	        
+	        printf "\n primary cell %d \n", p_index;
+	
+	        # --- A. Check Lower Protection (Slide 76-77) ---
+	        solve Dual_Problem;
+	        if Dual_Problem.result = "unbounded" then {          
+	            let nCUT := nCUT + 1;
+	            let gamma[nCUT] := GAMMA.unbdd;
+                let {ii in CELLS} mu_l[ii, nCUT] := MU_L[ii].unbdd;
+                let {ii in CELLS} mu_u[ii, nCUT] := MU_U[ii].unbdd;
+	            let protection_lvl[nCUT] := PROTECTION_LVL;
+	            
+	            let violation_found := 1;
+	            
+	            if cut_type == 1 then {
+					printf "Added a cut for upper protection in primary cell %d\n", p[j];
+				}
+				else {
+					printf "Added a cut for lower protection in primary cell %d\n", p[j];
+				}
+			}
+	    }
     }
-
     # 3. CONVERGENCE CHECK (Slide 79, Step 5)
     # If no new constraints were added to J, the solution is optimal.
     if violation_found = 0 then {
         printf "\nConvergence reached! No violations found.\n";
         break;
     }
-} #while {violation_found > 0};
+}; #while {violation_found > 0};
 
 ### FINAL RESULTS ###
 printf "\n========================================\n";
@@ -122,4 +101,8 @@ printf "Total Cuts: %d\n", nCUT;
 printf "Final Suppression Cost: %.2f\n", Total_Cost;
 
 printf "\nSuppressed Cells (y_i=1):\n";
-display {i in CELLS: y[i] > 0.5} y[i];
+printf "%-10s | %-10s | %-10s\n", "Cell ID", "Cost", "Is Primary";
+for {i in CELLS: y[i] > 0.5} {
+    printf "%-10d | %-10d | %-10d\n", i, c[i], is_p[i];
+}
+printf "========================================\n";

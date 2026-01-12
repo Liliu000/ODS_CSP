@@ -24,7 +24,6 @@ param begconst {1..nconstraints+1};
 param coef {NZ};
 param xcoef {NZ};
 
-param cut_type in {-1, 1};
 
 
 # --- Benders Cut Storage ---
@@ -74,7 +73,7 @@ maximize Dual_Objective_Function:
 # Dual Restriction: Ensures dual feasibility relative to cell deviations [cite: 584, 596]
 subj to Dual_Restriction {i in CELLS}:
     (sum {l in NZ: xcoef[l] == i} coef[l] * (
-        sum {c in CONSTR: begconst[c] <= l < begconst[c+1]} LAMBDA[c]
+        sum {r in CONSTR: begconst[r] <= l < begconst[r+1]} LAMBDA[r]
     ))
     + MU_L[i] + MU_U[i] 
     + (if i == p_index then GAMMA * L_or_U else 0) == 0;

@@ -1,0 +1,89 @@
+reset;
+
+option solver cplex;
+option solver_msg 0;
+
+model csp_benders.mod;
+data ../examples/small.ampl;
+
+# Define the two problems (variables, objective function, restrictions)
+problem Master: y, TotalCost, SuppressPrimary, BendersFeasibilityCut;
+problem Sub: Lambda, Mu, Delta, Gamma, Dual_Objective_Function, Dual_Restriction;
+
+suffix unbdd OUT; # to get the rays
+let nCUT := 0;
+param found_violation default 0;
+param iter default 1;
+param n_suppressed default 0;
+
+repeat {
+    printf "\n--- ITERATION %d. CURRENT CUTS: %d ---\n", iter, nCUT;
+
+    solve Master;
+    printf "Master Cost: %g\n", TotalCost;
+    
+    let found_violation := 0;
+    let {i in CELLS} y_fixed[i] := y[i];
+
+    # Check protection for each primary cell and type of deviation
+    for {k in 1..npcells} {
+        for {type in {1, -1}} {
+            
+            # Set up subproblem parameters
+            let p_index := p[k];
+            let L_or_U := type;
+            let protection_lvl := if type == 1 then pupl[k] else plpl[k];
+            
+            solve Sub;
+           
+            if Sub.result = "unbounded" then {          
+                let nCUT := nCUT + 1;
+                
+				let gamma[nCUT] := Gamma.unbdd;
+                let {i in CELLS} mu[i, nCUT] := Mu[i].unbdd;
+                let {i in CELLS} delta[i, nCUT] := Delta[i].unbdd;
+                let protection_lvl_k[nCUT] := protection_lvl;
+                
+                let found_violation := 1;
+                
+                if type == 1 then {
+					printf "Added a cut for upper protection in primary cell %d\n", p[k];
+				}
+				else {
+					printf "Added a cut for lower protection in primary cell %d\n", p[k];
+				}
+			}
+			else {
+				if type == 1 then {
+					printf "No violation for upper protection in primary cell %d\n", p[k];
+				}
+				else {
+					printf "No violation for lower protection in primary cell %d\n", p[k];
+				}
+			}
+        }
+    }
+    let iter := iter + 1;
+
+    if found_violation == 0 then {
+        printf "\n\n****** OPTIMAL SOLUTION FOUND ******\n";
+        break;
+    }
+};
+
+let n_suppressed := sum {i in CELLS} (if y[i] > 0.5 then 1 else 0);
+
+printf "\nNumber of suppressed cells: %d\n", n_suppressed;
+printf "Suppressed cells:\n";
+printf "Primary cells:   ";
+for {i in CELLS: y[i] > 0.5 and is_p[i] == 1} {
+    printf "%d ", i;
+}
+printf "\nSecondary cells: ";
+for {i in CELLS: y[i] > 0.5 and is_p[i] == 0} {
+    printf "%d ", i;
+}
+printf "\n\n";
+param end_time := time();
+display TotalCost;
+display _total_solve_time;
