@@ -2,7 +2,9 @@
 reset;
 
 model csp_benders.mod;
-data ../examples/small.ampl;  
+#data ../examples/example_2D.ampl; 
+#data ../examples/small.ampl;  
+data ../examples/targus.ampl; 
 
 ### SOLVER OPTIONS ###
 option solver cplex;      
@@ -90,7 +92,7 @@ repeat {
 
         # --- upper---  <---WRONG, WARNING: tolerance violations
         solve Dual_Upper;
-		printf "\nDual_Upper solution %d \n", Dual_Obj_L;
+		printf "\nDual_Upper solution %d \n", Dual_Obj_U;
 		/*for {i in CELLS} {
 			printf "\n %d mul_U: %d    muu_U: %d \n",i, mu_l_U[i], mu_u_U[i];
 		}*/
@@ -124,5 +126,9 @@ printf "Total Lower Cuts: %d\n", n_l_cuts;
 printf "Total Upper Cuts: %d\n", n_u_cuts;
 printf "Final Suppression Cost: %.2f\n", Total_Cost;
 
-printf "\nSuppressed Cells (y_i=1):\n";
-display {i in CELLS: y[i] > 0.5} y[i];
+printf "\nSuppressed Cells (y_i = 1):\n";
+printf "%-10s | %-10s | %-10s\n", "Cell ID", "Cost", "Is Primary";
+for {i in CELLS: y[i] > 0.5} {
+    printf "%-10d | %-10d | %-10d\n", i, c[i], is_p[i];
+}
+printf "========================================\n";

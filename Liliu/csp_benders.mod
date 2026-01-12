@@ -79,7 +79,7 @@ subject to Dual_Constraint_L {i in CELLS}:
 
 # DUAL SUBPROBLEM UPPER  
 
-maximize Dual_Obj_U: 
+minimize Dual_Obj_U: 
     sum {i in CELLS} (-(lb[i] - a[i]) * mu_l_U[i] + (ub[i] - a[i]) * mu_u_U[i]) * y_fixed[i];
 
 # A^T * lambda + mu_l - mu_u = -e_p
