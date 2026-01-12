@@ -79,11 +79,26 @@
 \section{Introduction}
 \label{sec:intro}
 
+The Cell Supression Problem (CSP) is a fundamental problem in tabular data protection,
+as it must be solved to ensure a certain level of confidenciality is applied to specific
+sensible cells. Tabular data with unsolved CSP takes the risk that an attacker might be 
+able to compute an interval for the values of sensible censured cells which is too small.
+
+Since supressing only sensible cells would not suffice, the CSP seeks to find a balance
+between the amount of information and the protection of the tables, by defining minimum
+protection levels and the cost of hidding each cell.
+
+As we will see, the complexity of the raw problem requires an algorithm to solve the problem
+in an efficient way, for which we will use Benders decomposition.
 
 
 \textbf{Objectives:}
 \begin{itemize}[noitemsep]
-  \item TODO
+  \item Contextualizing the problem
+  \item Formulating the problem
+  \item Implementing CSP in its basic form (MILP) in AMPL
+  \item Implementing CSP with Benders decomposition in AMPL
+  \item Testing the implementations
   
 \end{itemize}
 
@@ -112,7 +127,32 @@ fully contains the interval
   \label{eq:prot-lvls}
   [\overline{a}_p,  \underbar{$a$}_p]\in[a_p-lpl_p, a_p+upl_p]
 \end{equation}
+
+The best guess an auditor can make about $a_p$ is defined by $[\overline{a}_p,  \underbar{$a$}_p]\rightarrow$
+
+\begin{equation}
+\underline{a}_p = 
+\begin{array}{ll} 
+\min & x_p \\ 
+\text{s.to} & Ax = b \\ 
+& l_i \leq x_i \leq u_i \quad i \in \mathcal{P} \cup \mathcal{S} \\ 
+& x_i = a_i \quad i \notin \mathcal{P} \cup \mathcal{S} 
+\end{array} 
+\qquad 
+\overline{a}_p = 
+\begin{array}{ll} 
+\max & x_p \\ 
+\text{s.to} & Ax = b \\ 
+& l_i \leq x_i \leq u_i \quad i \in \mathcal{P} \cup \mathcal{S} \\ 
+& x_i = a_i \quad i \notin \mathcal{P} \cup \mathcal{S} 
+\end{array} 
+\end{equation}
+
+
 \end{itemize}
+
+
+
  
 \subsection{CSP Formulation}
 
@@ -423,24 +463,6 @@ Column 1 and Row 1 represent the totals for their respective dimensions.
     \label{tab:example2D-protection-levels}
 \end{table}
 
-Table Constraints:
-\begin{enumerate}
-  \item[] \hspace*{-\leftmargin}\textbf{Grand Total Consistency:}
-  \item $x_7 + x_{13} + x_{19} + x_{25} - x_1 = 0$
-  \item $x_2 + x_3 + x_4 + x_5 + x_6 - x_1 = 0$
-  \item[] \hspace*{-\leftmargin}\textbf{Column Constraints:}
-  \item $x_8 + x_{14} + x_{20} + x_{26} - x_2 = 0$  *(Column 1)*
-  \item $x_9 + x_{15} + x_{21} + x_{27} - x_3 = 0$  *(Column 2)*
-  \item $x_{10} + x_{16} + x_{22} + x_{28} - x_4 = 0$ *(Column 3)*
-  \item $x_{11} + x_{17} + x_{23} + x_{29} - x_5 = 0$ *(Column 4)*
-  \item $x_{12} + x_{18} + x_{24} + x_{30} - x_6 = 0$ *(Column 5)*
-  \item[] \hspace*{-\leftmargin}\textbf{Row Constraints:}
-  \item  $x_8 + x_9 + x_{10} + x_{11} + x_{12} - x_7 = 0$  *(Row 1)*
-  \item $x_{14} + x_{15} + x_{16} + x_{17} + x_{18} - x_{13} = 0$ *(Row 2)*
-  \item $x_{20} + x_{21} + x_{22} + x_{23} + x_{24} - x_{19} = 0$ *(Row 3)*
-  \item $x_{26} + x_{27} + x_{28} + x_{29} + x_{30} - x_{25} = 0$ *(Row 4)*
-\end{enumerate}
-
 
 \subsection{targus}
 In Table \ref{tab:targus-original} we can see the original data table for \textit{targus.ampl} data instance created by rows($\rightarrow$), with the sensitive cells marked with *. 
@@ -500,16 +522,6 @@ Row 1 contains the totals for the columns.
 \end{table}
 
 
-Table Constraints:
-\begin{enumerate}
-  \item[] \hspace*{-\leftmargin}\textbf{Row Constraints:}
-  \item  $x_{1} + x_{2} + x_{3} + x_{4} + x_{5} + x_{6} - x_{7} = 0$
-  \item[] \hspace*{-\leftmargin}\textbf{Column Constraints:}
-  \item  $x_{1} + x_{8} + x_{15} + x_{22} - x_{29} = 0$
-\end{enumerate}
-
-
-
 
 \section{Implementation Details}
 Given the the mathematical formulation of the Benders decomposition from Section \ref{sec:benders-decomposition-formulation}, we have implemented the master problem and subproblems:
@@ -524,7 +536,7 @@ Given the the mathematical formulation of the Benders decomposition from Section
 
 \subsection{small}
 
-\begin{table}[h]
+\begin{table}[H]
     \centering
     \begin{tabular}{c | c | c}
         \textbf{Cell ID} & \textbf{Cost} & \textbf{Is Primary} \\
@@ -545,7 +557,7 @@ Given the the mathematical formulation of the Benders decomposition from Section
 \end{table}
 
 
-\begin{table}[h]
+\begin{table}[H]
     \centering
     \begin{tabular}{l | c c c c c c c}
              & Col 1 & Col 2 & Col 3 & Col 4 & Col 5 & Col 6 & Col 7 \\
@@ -566,7 +578,7 @@ Given the the mathematical formulation of the Benders decomposition from Section
 
 \subsection{Example\_2D}
 
-\begin{table}[h]
+\begin{table}[H]
     \centering
     \begin{tabular}{c | c | c}
         \textbf{Cell ID} & \textbf{Cost} & \textbf{Is Primary} \\
@@ -585,7 +597,7 @@ Given the the mathematical formulation of the Benders decomposition from Section
 \end{table}
 
 
-\begin{table}[h]
+\begin{table}[H]
     \centering
     \begin{tabular}{l | c c c c c c}
          & Col 1 & Col 2 & Col 3 & Col 4 & Col 5 & Col 6 \\

@@ -4,18 +4,18 @@
 \contentsline {subsection}{\numberline {2.2}CSP Formulation}{2}{subsection.2.2}%
 \contentsline {subsection}{\numberline {2.3}Benders decomposition}{3}{subsection.2.3}%
 \contentsline {subsubsection}{\numberline {2.3.1}Subproblem}{4}{subsubsection.2.3.1}%
-\contentsline {subsubsection}{\numberline {2.3.2}Benders Cuts}{5}{subsubsection.2.3.2}%
+\contentsline {subsubsection}{\numberline {2.3.2}Benders Cuts}{6}{subsubsection.2.3.2}%
 \contentsline {subsubsection}{\numberline {2.3.3}Master Problem}{6}{subsubsection.2.3.3}%
-\contentsline {section}{\numberline {3}Datasets}{6}{section.3}%
-\contentsline {subsection}{\numberline {3.1}small}{6}{subsection.3.1}%
+\contentsline {section}{\numberline {3}Datasets}{7}{section.3}%
+\contentsline {subsection}{\numberline {3.1}small}{7}{subsection.3.1}%
 \contentsline {subsection}{\numberline {3.2}example\_2D}{7}{subsection.3.2}%
 \contentsline {subsection}{\numberline {3.3}targus}{8}{subsection.3.3}%
 \contentsline {section}{\numberline {4}Implementation Details}{9}{section.4}%
-\contentsline {subsection}{\numberline {4.1}Subproblem Lower}{11}{subsection.4.1}%
-\contentsline {subsection}{\numberline {4.2}Subproblem Upper}{11}{subsection.4.2}%
-\contentsline {section}{\numberline {5}Computational Experiments and Results}{11}{section.5}%
-\contentsline {subsection}{\numberline {5.1}small}{11}{subsection.5.1}%
-\contentsline {subsection}{\numberline {5.2}Example\_2D}{11}{subsection.5.2}%
+\contentsline {subsection}{\numberline {4.1}Subproblem Lower}{9}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Subproblem Upper}{9}{subsection.4.2}%
+\contentsline {section}{\numberline {5}Computational Experiments and Results}{9}{section.5}%
+\contentsline {subsection}{\numberline {5.1}small}{9}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Example\_2D}{10}{subsection.5.2}%
 \contentsline {subsection}{\numberline {5.3}targus}{11}{subsection.5.3}%
-\contentsline {section}{\numberline {6}References}{12}{section.6}%
-\contentsline {section}{\numberline {A}AMPL Files}{13}{appendix.A}%
+\contentsline {section}{\numberline {6}References}{11}{section.6}%
+\contentsline {section}{\numberline {A}AMPL Files}{12}{appendix.A}%

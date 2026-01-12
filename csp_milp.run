@@ -1,26 +1,55 @@
-# Reset the AMPL environment
 reset;
-
-# Load the model
 model csp_milp.mod;
-
-# Load the data
+model csp_check.mod;
 data examples/small.ampl;
 
-# Specify the solver (Gurobi or CPLEX are recommended for MIP)
 option solver cplex;
 
-# Solve the problem
-solve;
+# 1. Solve the Master MILP first 
+# Use the 'problem' command to tell AMPL to only solve the MILP variables
+problem Master_MILP: y, x_l, x_u, Total_Cost, Lower_Bound_Prot, Upper_Bound_Prot, 
+                    Flow_Conservation_L, Flow_Conservation_U, Capacity_L_Lower, 
+                    Capacity_L_Upper, Capacity_U_Lower, Capacity_U_Upper, 
+                    Primary_Must_Be_Suppressed;
 
-printf "\n========================================\n";
-printf "OPTIMIZATION COMPLETE\n";
-printf "Total Cost (Secondary Suppressions): %g\n", Total_Cost;
-printf "========================================\n";
+solve Master_MILP;
 
-printf "\nSuppressed Cells (y_i = 1):\n";
-printf "%-10s | %-10s | %-10s\n", "Cell ID", "Cost", "Is Primary";
-for {i in CELLS: y[i] > 0.5} {
-    printf "%-10d | %-10d | %-10d\n", i, c[i], is_p[i];
+# 1. Setup Audit Problems
+problem Audit_Min: x_audit, Audit_Conservation, Suppressed_Bounds, Unsuppressed_Fixed, Min_Cell_Val;
+problem Audit_Max: x_audit, Audit_Conservation, Suppressed_Bounds, Unsuppressed_Fixed, Max_Cell_Val;
+
+# 2. DECLARE parameters for storing results
+param found_y {CELLS};
+let {i in CELLS} found_y[i] := y[i];
+
+param actual_min;  # Fixes the syntax error
+param actual_max;  # Fixes the syntax error
+
+# Optional: Clean up solver output for the loop
+option solver_msg 0;
+
+printf "\n================ AUDIT RESULTS ================\n";
+
+for {j in P_INDEX} {
+    let target_p := p[j]; 
+    let {i in CELLS} y_fixed[i] := found_y[i];
+
+    # Solve Min subproblem
+    solve Audit_Min;
+    let actual_min := Min_Cell_Val; # Now this will work
+
+    # Solve Max subproblem
+    solve Audit_Max;
+    let actual_max := Max_Cell_Val; # Now this will work
+
+    # Print the verification logic
+    printf "Cell %d: [%.2f, %.2f] vs Protection [%.2f, %.2f] -> ", 
+        target_p, actual_min, actual_max, 
+        (a[target_p] - plpl[j]), (a[target_p] + pupl[j]);
+
+    if (actual_min <= a[target_p] - plpl[j] + 0.0001 and 
+        actual_max >= a[target_p] + pupl[j] - 0.0001) then 
+        printf "SAFE\n";
+    else 
+        printf "FAILED\n";
 }
-printf "========================================\n";
