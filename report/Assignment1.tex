@@ -193,7 +193,7 @@ To take advantage of Benders decomposition we first reformulate the original MIL
 problem to an equivalent of Benders starting problem.
 
 \begin{align*}
-\min \quad & \sum_{i=1}^{n} w_i y_i \\
+\min \quad & \sum_{i=1}^{n} c_i y_i \\
 \text{s. to} \quad & Ax^{l,p} = 0 & \forall p \in \mathcal{P} \\
 & Ax^{u,p} = 0 & \forall p \in \mathcal{P} \\
 & (l_i - a_i)y_i - x_i^{l,p} + s_{l,i}^{l,p} = 0 & i=1 \dots n, \forall p \in \mathcal{P} \\
@@ -213,7 +213,7 @@ The Original Problem now becomes:
 \centering
 \begin{tabular}{ c c c }
    & \textbf{c\textsuperscript{T}x} & \textbf{q\textsuperscript{T}y} \\
-  \textbf{Objective function (min)} & $w y$ & $+ 0 x^{l,p}+x^{u,p}$
+  \textbf{Objective function (min)} & $c y$ & $+ 0 x^{l,p}+x^{u,p}$
 \end{tabular}
 \end{table}
 
@@ -246,17 +246,17 @@ Primal Subproblem Q:
 subproblem as an optimization to see if the protection level can be reached given the fixed suppression $\bar{y}$:
 for each primary cell $p[j]$:
 \begin{align*}
-(Q_{lower}) = \quad \min \quad & x_{l,p[j]} \\
+(Q_{lower}) = \quad \min \quad & x_{p[j]} \\
 \text{s. to} \quad & Ax_l = 0 [\lambda]\\
-& (l_i - a_i)\bar{y}_i \leq x_{l,i} [\mu_1]\\
-&  x_{l,i} \leq (u_i - a_i)\bar{y}_i [\mu_2]\\
+& (l_i - a_i)\bar{y}_i \leq x_{l,i} [\mu_{ll}]\\
+&  x_{l,i} \leq (u_i - a_i)\bar{y}_i [\mu_{ul}]\\
 & Goal: Objective \quad value \leq -lpl_{p[j]}?
 \end{align*}
 \begin{align*}
-(Q_{upper}) = \quad \min \quad & x_{u,p[j]} \\
+(Q_{upper}) = \quad \max \quad & x_{p[j]} \\
 \text{s. to} \quad & Ax_u = 0 [\lambda]\\
-& (l_i - a_i)\bar{y}_i \leq x_{u,i} [\mu_1]\\
-&  x_{u,i} \leq (u_i - a_i)\bar{y}_i [\mu_2]\\
+& (l_i - a_i)\bar{y}_i \leq x_{u,i} [\mu_{lu}]\\
+&  x_{u,i} \leq (u_i - a_i)\bar{y}_i [\mu_{uu}]\\
 & Goal: Objective \quad value \leq -upl_{p[j]}?
 \end{align*}
 
@@ -264,30 +264,41 @@ Dual of Subproblem Q:
 To ensure a suppression pattern is valid, you have to check if a primary cell is protected from "below" (someone trying to guess a value too low) and from "above" (someone trying to guess a value too high).
 Dual of Subproblem Q for each primary cell $p[j]$:
 \begin{align*}
-(Q_{lower}) = \quad \max \quad & \sum_{i=1}^{n}((l_i - a_i)\mu_{l,i} - (u_i-a_i)\mu_{u,i})\bar{y}_i  \\
-\text{s. to} \quad & A^T\lambda + \mu_l  - \mu_u = e_p \\
-& \mu_l \geq 0, \mu_u \geq 0, \lambda free
+(Q_{D lower}) = \quad \max \quad & \sum_{i=1}^{n}((l_i - a_i)\mu_{ll,i} - (u_i-a_i)\mu_{ul,i})\bar{y}_i  \\
+\text{s. to} \quad & A^T\lambda + \mu_{ll}  - \mu_{ul} = e_p \\
+& \mu_{ll} \geq 0, \mu_{ul} \geq 0, \lambda free
 \end{align*}
 If the optimal value of this objective is greater than $-lpl$, that means the pattern is insecure and we have to add a lower Benders cut to the Master Problem.
 \begin{align*}
--lpl \geq \quad & \sum_{i=1}^{n}((l_i - a_i)\mu_{l,i} - (u_i-a_i)\mu_{u,i})y_i  \\
+-lpl \geq \quad & \sum_{i=1}^{n}((l_i - a_i)\mu_{ll,i} - (u_i-a_i)\mu_{ul,i})y_i  \\
 \end{align*}
 
 \begin{align*}
-(Q_{upper}) = \quad \max \quad & \sum_{i=1}^{n}((u_i-a_i)\mu_{u,i}-(l_i - a_i)\mu_{l,i})\bar{y}_i  \\
+(Q_{D upper}) = \quad \max \quad & \sum_{i=1}^{n}((u_i-a_i)\mu_{uu,i}-(l_i - a_i)\mu_{lu,i})\bar{y}_i  \\
+\text{s. to} \quad & A^T\lambda + \mu_{lu}  - \mu_{uu}   = -e_p \\
+& \mu_{lu} \geq 0, \mu_{uu} \geq 0, \lambda free
 \end{align*}
 If the optimal value of this objective is less than $upl$, that means the pattern is insecure and we have to add an upper Benders cut to the Master Problem.
 \begin{align*}
-upl \leq \quad & \sum_{i=1}^{n}((u_i-a_i)\mu_{u,i}-(l_i - a_i)\mu_{l,i})y_i  \\
+upl \leq \quad & \sum_{i=1}^{n}((u_i-a_i)\mu_{uu,i}-(l_i - a_i)\mu_{lu,i})y_i  \\
 \end{align*}
 If we have $P$ primary cells, we will have to solve $2P$ subproblems at each iteration of Benders decomposition.
 
-Master Problem: $\bar{\mu}_l, \bar{\mu}_u$ are fixed from the subproblem solutions.
+Master Problem: 
+We have to add the cuts for all the insecure primary cells found in the subproblems. 
+If we have 
+\begin{itemize}
+  \item $\mathcal{J}_{l}$: set of lower cuts added until iteration $r$ from insecure primary cells found with the lower dual subproblem
+  \item $\mathcal{J}_{u}$: set of upper cuts added until iteration $r$ from insecure primary cells found with the upper dual subproblem
+  \item for each cut $j_l \in \mathcal{J}_{l}$, we have $\bar{\mu}_{ll}^{p, j_l}, \bar{\mu}_{ul}^{p, j_l}$ from the solution of the corresponding lower dual subproblem
+  \item for each cut $j_u \in \mathcal{J}_{u}$, we have $\bar{\mu}_{lu}^{p, j_u}, \bar{\mu}_{uu}^{p, j_u}$ from the solution of the corresponding upper dual subproblem
+\end{itemize}
+The Master Problem at iteration $r$ is:
 \begin{align*}
-(BP_r) = \quad \min \quad & \sum_{i=1}^{n}c_i x_i \\
+(BP_r) = \quad \min \quad & \sum_{i=1}^{n}c_i y_i \\
 \text{s. to} \quad & y_p = 1 & \forall p \in \mathcal{P}\\
-& -lpl \geq  \sum_{i=1}^{n}((l_i - a_i)\mu_{l,i} - (u_i-a_i)\mu_{u,i})y_i   & for all cuts created in iterations\\
-& upl \leq \sum_{i=1}^{n}((u_i-a_i)\mu_{u,i}-(l_i - a_i)\mu_{l,i})y_i  & for all cuts created in iterations\\
+& -lpl_p \geq  \sum_{i=1}^{n}((l_i - a_i)\bar{\mu}_{ll,i}^{p, j_l} - (u_i-a_i)\bar{\mu}_{ul,i}^{p, j_l})y_i   & \forall p \in \mathcal{P},\forall j_l \in \mathcal{J}_l\\
+& upl_p \leq \sum_{i=1}^{n}((u_i-a_i)\bar{\mu}_{uu,i}^{p, j_u}-(l_i - a_i)\bar{\mu}_{lu,i}^{p, j_u})y_i  & \forall p \in \mathcal{P},\forall j_u \in \mathcal{J}_u\\
 & y_i \in \{0, 1\}  
 \end{align*}
 
@@ -301,6 +312,314 @@ Master Problem: $\bar{\mu}_l, \bar{\mu}_u$ are fixed from the subproblem solutio
 TODO
 
 \section{Implementation Details}
+
+\section{Computational Experiments and Results}
+\subsection{small}
+Original table: 
+In Table \ref{tab:small-original} we can see the original data table for \textit{small.ampl} data instance created by rows($\rightarrow$), with the sensitive cells marked with *.
+Column 7 and Row 5 contain the totals for the rows and columns respectively.
+\begin{table}[h]
+    \centering
+    \begin{tabular}{l | c c c c c c c}
+             & Col 1 & Col 2 & Col 3 & Col 4 & Col 5 & Col 6 & Col 7 \\
+        \toprule
+        Row 1 & 300* & 8    & 5    & 5    & 5*   & 38   & \textbf{361} \\
+        Row 2 & 8    & 68*  & 40   & 76   & 29   & 31   & \textbf{252} \\
+        Row 3 & 11   & 33   & 20   & 60   & 35   & 44   & \textbf{203} \\
+        Row 4 & 7    & 28   & 36*  & 41   & 22   & 63   & \textbf{197} \\
+        Row 5 & \textbf{326} & \textbf{137} & \textbf{101} & \textbf{182} & \textbf{91} & \textbf{176} & \textbf{1013} \\
+    \end{tabular}
+    \caption{Original Small Instance Data Table with Sensitive Cells Marked with *}
+    \label{tab:small-original}
+\end{table}
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{c | c | c}
+        \textbf{Number Cell} & \textbf{Lower Protection Level} & \textbf{Upper Protection Level} \\
+        \toprule
+        1	& 15  & 20 \\
+        5	& 2   & 4 \\
+        9	& 10  & 6 \\
+       24	& 9   & 3 \\
+    \end{tabular}
+    \caption{Table of Small Instance Protection Levels for Sensitive Cells}
+    \label{tab:small-protection-levels}
+\end{table}
+
+Table Constraints:
+\begin{enumerate}
+  \item[] \hspace*{-\leftmargin}\textbf{Row Constraints:}
+  \item  $x_{1} + x_{2} + x_{3} + x_{4} + x_{5} + x_{6} - x_{7} = 0$
+  \item  $x_{8} + x_{9} + x_{10} + x_{11} + x_{12} + x_{13} - x_{14} = 0$
+  \item  $x_{15} + x_{16} + x_{17} + x_{18} + x_{19} + x_{20} - x_{21} = 0$
+  \item  $x_{22} + x_{23} + x_{24} + x_{25} + x_{26} + x_{27} - x_{28} = 0$
+  \item[] \hspace*{-\leftmargin}\textbf{Column Constraints:}
+  \item  $x_{1} + x_{8} + x_{15} + x_{22} - x_{29} = 0$
+  \item  $x_{2} + x_{9} + x_{16} + x_{23} - x_{30} = 0$
+  \item  $x_{3} + x_{10} + x_{17} + x_{24} - x_{31} = 0$
+  \item  $x_{4} + x_{11} + x_{18} + x_{25} - x_{32} = 0$
+  \item  $x_{5} + x_{12} + x_{19} + x_{26} - x_{33} = 0$
+  \item  $x_{6} + x_{13} + x_{20} + x_{27} - x_{34} = 0$
+\end{enumerate}
+
+
+\subsubsection{Results}
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{c | c | c}
+        \textbf{Cell ID} & \textbf{Cost} & \textbf{Is Primary} \\
+        \toprule
+        1          & 1          & 1   \\      
+        3          & 1          & 0   \\    
+        5          & 1          & 1   \\     
+        8          & 1          & 0   \\    
+        9          & 1          & 1   \\    
+        10         & 1          & 0   \\    
+        12         & 1          & 0   \\    
+        15         & 1          & 0   \\    
+        22         & 1          & 0   \\    
+        24         & 1          & 1   \\
+    \end{tabular}
+    \caption{Table of Cells to be Suppressed in Small Instance}
+    \label{tab:small-suppressed-cells}
+\end{table}
+
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{l | c c c c c c c}
+             & Col 1 & Col 2 & Col 3 & Col 4 & Col 5 & Col 6 & Col 7 \\
+        \toprule
+        Row 1 & x    & 8    & x    & 5    & x   & 38   & \textbf{361} \\
+        Row 2 & x    & x    & x    & 76   & x   & 31   & \textbf{252} \\
+        Row 3 & x    & 33   & 20   & 60   & 35   & 44   & \textbf{203} \\
+        Row 4 & x    & 28   & x    & 41   & 22   & 63   & \textbf{197} \\
+        Row 5 & \textbf{326} & \textbf{137} & \textbf{101} & \textbf{182} & \textbf{91} & \textbf{176} & \textbf{1013} \\
+    \end{tabular}
+    \caption{Small Data Table with Suppressing Sensitive Cells}
+    \label{tab:small-suppressed-table}
+\end{table}
+
+
+\subsection{example\_2D}
+
+In Table \ref{tab:example2D-original} we can see the original data table for \textit{example\_2D.ampl} data instance created by rows($\rightarrow$), with the sensitive cells marked with *.
+Column 1 and Row 1 represent the totals for their respective dimensions.
+\begin{table}[h]
+    \centering
+    \begin{tabular}{l | c c c c c c}
+         & Col 1 & Col 2 & Col 3 & Col 4 & Col 5 & Col 6 \\
+        \toprule
+        Row 1     & \textbf{3220} & \textbf{84} & \textbf{632} & \textbf{930} & \textbf{843} & \textbf{731} \\
+        Row 2     & \textbf{1529} & 3  & 336 & 309  & 484 & 397 \\
+        Row 3     & \textbf{484}  & 25 & 3   & 393* & 48  & 15  \\
+        Row 4     & \textbf{392}  & 1  & 2   & 137* & 145 & 107  \\
+        Row 5     & \textbf{815}  & 55 & 291* & 91  & 166 & 212* \\
+    \end{tabular}
+    \caption{Original Example\_2D Instance Data Table with Sensitive Cells Marked with *}
+    \label{tab:example2D-original}
+\end{table}
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{c | c | c}
+        \textbf{Number Cell} & \textbf{Lower Protection Level} & \textbf{Upper Protection Level} \\
+        \toprule
+        16	&	40	&	30 \\
+	      22	&	14	&	14 \\
+	      27	&	15	&	30 \\
+	      30	&	21	&	21
+    \end{tabular}
+    \caption{Table of Example\_2D Instance Protection Levels for Sensitive Cells}
+    \label{tab:example2D-protection-levels}
+\end{table}
+
+Table Constraints:
+\begin{enumerate}
+  \item[] \hspace*{-\leftmargin}\textbf{Grand Total Consistency:}
+  \item $x_7 + x_{13} + x_{19} + x_{25} - x_1 = 0$
+  \item $x_2 + x_3 + x_4 + x_5 + x_6 - x_1 = 0$
+  \item[] \hspace*{-\leftmargin}\textbf{Column Constraints:}
+  \item $x_8 + x_{14} + x_{20} + x_{26} - x_2 = 0$  *(Column 1)*
+  \item $x_9 + x_{15} + x_{21} + x_{27} - x_3 = 0$  *(Column 2)*
+  \item $x_{10} + x_{16} + x_{22} + x_{28} - x_4 = 0$ *(Column 3)*
+  \item $x_{11} + x_{17} + x_{23} + x_{29} - x_5 = 0$ *(Column 4)*
+  \item $x_{12} + x_{18} + x_{24} + x_{30} - x_6 = 0$ *(Column 5)*
+  \item[] \hspace*{-\leftmargin}\textbf{Row Constraints:}
+  \item  $x_8 + x_9 + x_{10} + x_{11} + x_{12} - x_7 = 0$  *(Row 1)*
+  \item $x_{14} + x_{15} + x_{16} + x_{17} + x_{18} - x_{13} = 0$ *(Row 2)*
+  \item $x_{20} + x_{21} + x_{22} + x_{23} + x_{24} - x_{19} = 0$ *(Row 3)*
+  \item $x_{26} + x_{27} + x_{28} + x_{29} + x_{30} - x_{25} = 0$ *(Row 4)*
+\end{enumerate}
+
+
+
+\subsubsection{Results}
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{c | c | c}
+        \textbf{Cell ID} & \textbf{Cost} & \textbf{Is Primary} \\
+        \toprule
+        3          & 0          & 0 \\        
+        6          & 0          & 0 \\      
+        13         & 0          & 0 \\      
+        16         & 0          & 1 \\      
+        19         & 0          & 0 \\      
+        22         & 0          & 1 \\      
+        27         & 0          & 1 \\      
+        30         & 0          & 1 \\
+    \end{tabular}
+    \caption{Table of Cells to be Suppressed in example\_2D Instance}
+    \label{tab:example2D-suppressed-cells}
+\end{table}
+
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{l | c c c c c c}
+         & Col 1 & Col 2 & Col 3 & Col 4 & Col 5 & Col 6 \\
+        \toprule
+        Row 1     & \textbf{3220} & \textbf{84} & \textbf{x} & \textbf{930} & \textbf{843} & \textbf{x} \\
+        Row 2     & \textbf{1529} & 3  & 336 & 309  & 484 & 397 \\
+        Row 3     & \textbf{x}    & 25 & 3   & x & 48  & 15  \\
+        Row 4     & \textbf{x}    & 1  & 2   & x & 145 & 107  \\
+        Row 5     & \textbf{815}  & 55 & x   & 91  & 166 & x \\
+    \end{tabular}
+    \caption{example\_2D Data Table with Suppressing Sensitive Cells}
+    \label{tab:example2D-suppressed-table}
+\end{table}
+
+
+\subsection{targus}
+In Table \ref{tab:targus-original} we can see the original data table for \textit{targus.ampl} data instance created by rows($\rightarrow$), with the sensitive cells marked with *. 
+Due to the large values in the table, we have used commas to separate thousands.
+Due to the row-wise size of the table, we have transposed the original table for better visualization.
+Row 1 contains the totals for the columns.
+\begin{table}[h]
+    \centering
+    \begin{tabular}{l | c c c c c c c c c}
+         & Row 1 & Row 2 & Row 3 & Row 4 & Row 5 & Row 6 & Row 7 & Row 8 & Row 9\\
+        \toprule
+        Col 1 & 16,847,261.8 & 20* & 25 & 2,711,808 & 2,320,534 & 2,505,042.6 & 2,799,074.3 & 6,510,758 & 0 \\
+        Col 2 & 4,373,279 & 5* & 5* & 719,049 & 659,680 & 688,962 & 756,529 & 1,549,049 & 0 \\
+        Col 3 & 1,896,129 & 5* & 5* & 398,082 & 348,039 & 354,711 & 418,778 & 486,529 & 0 \\
+        Col 4 & 1,808,861 & 0 & 5* & 223,990 & 221,332 & 241,913 & 258,233 & 863,393 & 0 \\
+        Col 5 & 578,289 & 0 & 96,897 & 30,909 & 92,338 & 79,518 & 219,127 & 0 & 0 \\
+        Col 6 & 3,703,898 & 15* & 5* & 642,238 & 515,003 & 534,147 & 620,392 & 1,392,096 & 0 \\
+        Col 7 & 124,336 & 5* & 0 & 36,311 & 32,132 & 25,770 & 18,150 & 11,868* & 0 \\
+        Col 8 & 526,279 & 0 & 0* & 93,589 & 94,957 & 110,930 & 81,799 & 145,004 & 0 \\
+        Col 9 & 2,234,995 & 10* & 5* & 345,803 & 251,858 & 251,188 & 303,377 & 1,086,254 & 0 \\    
+        Col 10 & 818,286   & 0       & 0       & 166,535 & 136,556 & 146,259 & 217,066 & 151,870 & 0       \\
+        Col 11 & 4,576,115.8 & 0       & 0       & 648,972 & 543,570 & 663,896.6 & 775,132.3 & 1,944,545 & 0       \\
+        Col 12 & 485,328   & 0       & 0       & 63,767  & 75,442  & 87,305  & 59,953  & 198,859 & 0       \\
+        Col 13 & 3,664,559.8 & 0       & 0       & 537,911 & 430,851 & 515,019.8 & 643,762.3 & 1,537,016 & 0       \\
+        Col 14 & 426,230   & 0       & 0       & 47,294  & 37,277  & 51,672  & 71,417  & 208,870 & 0       \\
+        Col 15 & 4,183,971 & 0       & 15*     & 701,549 & 602,281 & 618,037 & 647,021 & 1,625,068 & 0       \\
+        Col 16 & 2,752,743 & 0       & 15*     & 488,613 & 392,395 & 363,490 & 402,925 & 1,105,305 & 0       \\
+        Col 17 & 1,441,228 & 0       & 0       & 212,936 & 209,886 & 254,547 & 244,096 & 519,783 & 0       \\
+        Col 18 & 0         & 0       & 0       & 0       & 0       & 0       & 0       & 0       & 0       \\
+      \end{tabular}
+    \caption{Original Targus Instance Data Table with Sensitive Cells Marked with *}
+    \label{tab:targus-original}
+\end{table}
+
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{c | c | c}
+        \textbf{Number Cell} & \textbf{Lower Protection Level} & \textbf{Upper Protection Level} \\
+        \toprule
+       19	& 6   & 6 \\
+       20	& 1.67 & 1.67 \\
+       21	& 1.67 & 1.67 \\
+       24	& 5   & 5 \\
+       25	& 1.67 & 1.67 \\
+       27	& 3.33 & 3.33 \\
+       38	& 1.67 & 1.67 \\
+       39	& 1.67 & 1.67 \\
+       42	& 1.67 & 1.67 \\
+       45	& 1.67 & 1.67 \\
+       51	& 5   & 5 \\
+       52	& 5   & 5 \\
+       133	& 3480 & 3480
+    \end{tabular}
+    \caption{Table of Targus Instance Protection Levels for Sensitive Cells}
+    \label{tab:targus-protection-levels}
+\end{table}
+
+
+Table Constraints:
+\begin{enumerate}
+  \item[] \hspace*{-\leftmargin}\textbf{Row Constraints:}
+  \item  $x_{1} + x_{2} + x_{3} + x_{4} + x_{5} + x_{6} - x_{7} = 0$
+  \item[] \hspace*{-\leftmargin}\textbf{Column Constraints:}
+  \item  $x_{1} + x_{8} + x_{15} + x_{22} - x_{29} = 0$
+\end{enumerate}
+
+
+
+
+\subsubsection{Results}
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{c | c | c}
+        \textbf{Cell ID} & \textbf{Cost} & \textbf{Is Primary} \\
+        \toprule
+        19         & 1          & 1          \\
+        20         & 1          & 1         \\
+        21         & 1          & 1         \\
+        24         & 1          & 1         \\
+        25         & 1          & 1         \\
+        27         & 1          & 1         \\
+        37         & 1          & 0         \\
+        38         & 1          & 1         \\
+        39         & 1          & 1         \\
+        42         & 1          & 1         \\
+        45         & 1          & 1         \\
+        51         & 1          & 1         \\
+        52         & 1          & 1         \\
+        78         & 611        & 0         \\
+        87         & 715        & 0         \\
+        99         & 298        & 0         \\
+        106        & 432        & 0         \\
+        133        & 14         & 1         \\
+        134        & 172        & 0  \\
+    \end{tabular}
+    \caption{Table of Cells to be Suppressed in Targus Instance}
+    \label{tab:targus-suppressed-cells}
+\end{table}
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{l | c c c c c c c c c}
+         & Row 1 & Row 2 & Row 3 & Row 4 & Row 5 & Row 6 & Row 7 & Row 8 & Row 9\\
+        \toprule
+        Col 1 & 16,847,261.8 & x & 25 & 2,711,808 & 2,320,534 & 2,505,042.6 & 2,799,074.3 & 6,510,758 & 0 \\
+        Col 2 & 4,373,279 & x & 5* & 719,049 & 659,680 & 688,962 & 756,529 & 1,549,049 & 0 \\
+        Col 3 & 1,896,129 & x & 5* & 398,082 & 348,039 & 354,711 & 418,778 & 486,529 & 0 \\
+        Col 4 & 1,808,861 & 0* & 5* & 223,990 & 221,332 & 241,913 & 258,233 & 863,393 & 0 \\
+        Col 5 & 578,289 & 0 & 96,897 & 30,909 & 92,338 & 79,518 & 219,127 & 0 & 0 \\
+        Col 6 & 3,703,898 & 15* & 5* & 642,238 & 515,003 & 534,147 & 620,392 & 1,392,096 & 0 \\
+        Col 7 & 124,336 & 5* & 0 & 36,311 & 32,132 & 25,770 & 18,150 & 11,868* & 0 \\
+        Col 8 & 526,279 & 0 & 0* & 93,589 & 94,957 & 110,930 & 81,799 & 145,004 & 0 \\
+        Col 9 & 2,234,995 & 10* & 5* & 345,803 & 251,858 & 251,188 & 303,377 & 1,086,254 & 0 \\    
+        Col 10 & 818,286   & 0       & 0       & 166,535 & 136,556 & 146,259 & 217,066 & 151,870 & 0       \\
+        Col 11 & 4,576,115.8 & 0       & 0       & 648,972 & 543,570 & 663,896.6 & 775,132.3 & 1,944,545 & 0       \\
+        Col 12 & 485,328   & 0       & 0       & 63,767  & 75,442  & 87,305  & 59,953  & 198,859 & 0       \\
+        Col 13 & 3,664,559.8 & 0       & 0       & 537,911 & 430,851 & 515,019.8 & 643,762.3 & 1,537,016 & 0       \\
+        Col 14 & 426,230   & 0       & 0       & 47,294  & 37,277  & 51,672  & 71,417  & 208,870 & 0       \\
+        Col 15 & 4,183,971 & 0       & 15*     & 701,549 & 602,281 & 618,037 & 647,021 & 1,625,068 & 0       \\
+        Col 16 & 2,752,743 & 0       & 15*     & 488,613 & 392,395 & 363,490 & 402,925 & 1,105,305 & 0       \\
+        Col 17 & 1,441,228 & 0       & 0       & 212,936 & 209,886 & 254,547 & 244,096 & 519,783 & 0       \\
+        Col 18 & 0         & 0       & 0       & 0       & 0       & 0       & 0       & 0       & 0       \\
+      \end{tabular}
+    \caption{Targus Data Table with Suppressing Sensitive Cells}
+    \label{tab:targus-suppressed-table}
+\end{table}
 
 % =============================
 % 9. REFERENCES
