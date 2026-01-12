@@ -1,0 +1,128 @@
+
+reset;
+
+model csp_benders.mod;
+data ../examples/small.ampl;  
+
+### SOLVER OPTIONS ###
+option solver cplex;      
+option display_precision 6;
+option solve_messages 0; # 1; if parrafada
+
+### INITIALIZATION ###
+let L_CUT_IDS := {};
+let U_CUT_IDS := {};
+
+param n_l_cuts default 0;
+param n_u_cuts default 0;
+param violation_found binary default 0;
+param iteration default 0;
+param epsilon := 1e-7;
+
+problem Master:
+    y,
+    Total_Cost,
+    Primary_Must_Be_Suppressed,
+    Lower_Benders_Cuts,
+    Upper_Benders_Cuts;
+    
+problem Dual_Lower:
+    lambda_L,
+    mu_l_L,
+    mu_u_L,
+    Dual_Obj_L,
+    Dual_Constraint_L;
+    
+problem Dual_Upper:
+    lambda_U,
+    mu_l_U,
+    mu_u_U,
+    Dual_Obj_U,
+    Dual_Constraint_U;
+    
+printf "\nStarting Benders Decomposition for CSP\n";
+printf "========================================\n";
+
+repeat {
+    let iteration := iteration + 1;
+    let violation_found := 0;
+	if iteration > 2 then break; #debug show only 2 iterations
+	
+    #  --- master ---
+    printf "\nIteration %d: Solving Master Problem... \n", iteration;
+    solve Master;
+    printf "Cost: %.2f\n", Total_Cost;
+	
+    # fix the current suppression for subproblems
+    for {i in CELLS} {
+        let y_fixed[i] := y[i];
+        printf "%d ", y[i];
+    }
+    printf "\n";
+
+    # Check every primary cell p for both Lower and Upper protection
+    for {j in P_INDEX} {
+        let target_p_cell_idx := p[j];
+        printf "\n primary cell %d \n", target_p_cell_idx;
+
+        # --- lower ---
+        solve Dual_Lower;
+		
+		printf "\n DUAL Lower solution %d \n", Dual_Obj_L;
+		/*for {i in CELLS} {
+			printf "\n %d mul_L: %d    muu_L: %d \n",i, mu_l_L[i], mu_u_L[i];
+		}*/
+
+        # want -plpl >= Dual_Obj --> if Dual_Obj > -plpl, it is violated
+        if Dual_Obj_L > -plpl[j] + epsilon then {
+            let n_l_cuts := n_l_cuts + 1;
+            let L_CUT_IDS := L_CUT_IDS union {n_l_cuts};
+            let l_cut_p_idx[n_l_cuts] := j;
+            
+            # Store dual variables to build the cut in the next Master solve
+            for {i in CELLS} {
+                let l_mu_l[n_l_cuts, i] := mu_l_L[i];
+                let l_mu_u[n_l_cuts, i] := mu_u_L[i];
+            }
+            let violation_found := 1;
+            printf "  -> Lower Violation found for primary %d (cell %d)\n", j, p[j];
+        }
+
+        # --- upper---  <---WRONG, WARNING: tolerance violations
+        solve Dual_Upper;
+		printf "\nDual_Upper solution %d \n", Dual_Obj_L;
+		/*for {i in CELLS} {
+			printf "\n %d mul_U: %d    muu_U: %d \n",i, mu_l_U[i], mu_u_U[i];
+		}*/
+
+        # wnat: pupl <= Dual_Obj ---> if Dual_Obj < pupl, it is violated
+        if Dual_Obj_U < pupl[j] - epsilon then {
+            let n_u_cuts := n_u_cuts + 1;
+            let U_CUT_IDS := U_CUT_IDS union {n_u_cuts};
+            let u_cut_p_idx[n_u_cuts] := j;
+
+            for {i in CELLS} {
+                let u_mu_l[n_u_cuts, i] := mu_l_U[i];
+                let u_mu_u[n_u_cuts, i] := mu_u_U[i];
+            }
+            let violation_found := 1;
+            printf "  -> Upper Violation found for primary %d (cell %d)\n", j, p[j];
+        }
+    }
+
+    # Slide 79, step5, If no new constraints were added to J, the solution is optimal.
+    if violation_found = 0 then {
+        printf "\nConvergence reached! No violations found.\n";
+        break;
+    }
+}
+
+### FINAL RESULTS ###
+printf "\n========================================\n";
+printf "Benders Finished in %d iterations\n", iteration;
+printf "Total Lower Cuts: %d\n", n_l_cuts;
+printf "Total Upper Cuts: %d\n", n_u_cuts;
+printf "Final Suppression Cost: %.2f\n", Total_Cost;
+
+printf "\nSuppressed Cells (y_i=1):\n";
+display {i in CELLS: y[i] > 0.5} y[i];
