@@ -309,11 +309,7 @@ The Master Problem at iteration $r$ is:
 % =============================
 \section{Datasets}
 \label{sec:datasets}
-TODO
 
-\section{Implementation Details}
-
-\section{Computational Experiments and Results}
 \subsection{small}
 Original table: 
 In Table \ref{tab:small-original} we can see the original data table for \textit{small.ampl} data instance created by rows($\rightarrow$), with the sensitive cells marked with *.
@@ -362,45 +358,6 @@ Table Constraints:
   \item  $x_{5} + x_{12} + x_{19} + x_{26} - x_{33} = 0$
   \item  $x_{6} + x_{13} + x_{20} + x_{27} - x_{34} = 0$
 \end{enumerate}
-
-
-\subsubsection{Results}
-
-\begin{table}[h]
-    \centering
-    \begin{tabular}{c | c | c}
-        \textbf{Cell ID} & \textbf{Cost} & \textbf{Is Primary} \\
-        \toprule
-        1          & 1          & 1   \\      
-        3          & 1          & 0   \\    
-        5          & 1          & 1   \\     
-        8          & 1          & 0   \\    
-        9          & 1          & 1   \\    
-        10         & 1          & 0   \\    
-        12         & 1          & 0   \\    
-        15         & 1          & 0   \\    
-        22         & 1          & 0   \\    
-        24         & 1          & 1   \\
-    \end{tabular}
-    \caption{Table of Cells to be Suppressed in Small Instance}
-    \label{tab:small-suppressed-cells}
-\end{table}
-
-
-\begin{table}[h]
-    \centering
-    \begin{tabular}{l | c c c c c c c}
-             & Col 1 & Col 2 & Col 3 & Col 4 & Col 5 & Col 6 & Col 7 \\
-        \toprule
-        Row 1 & x    & 8    & x    & 5    & x   & 38   & \textbf{361} \\
-        Row 2 & x    & x    & x    & 76   & x   & 31   & \textbf{252} \\
-        Row 3 & x    & 33   & 20   & 60   & 35   & 44   & \textbf{203} \\
-        Row 4 & x    & 28   & x    & 41   & 22   & 63   & \textbf{197} \\
-        Row 5 & \textbf{326} & \textbf{137} & \textbf{101} & \textbf{182} & \textbf{91} & \textbf{176} & \textbf{1013} \\
-    \end{tabular}
-    \caption{Small Data Table with Suppressing Sensitive Cells}
-    \label{tab:small-suppressed-table}
-\end{table}
 
 
 \subsection{example\_2D}
@@ -455,8 +412,129 @@ Table Constraints:
 \end{enumerate}
 
 
+\subsection{targus}
+In Table \ref{tab:targus-original} we can see the original data table for \textit{targus.ampl} data instance created by rows($\rightarrow$), with the sensitive cells marked with *. 
+Due to the large values in the table, we have used commas to separate thousands.
+Due to the row-wise size of the table, we have transposed the original table for better visualization.
+Row 1 contains the totals for the columns.
+\begin{table}[H]
+    \centering
+    \begin{tabular}{l | c c c c c c c c c}
+         & Row 1 & Row 2 & Row 3 & Row 4 & Row 5 & Row 6 & Row 7 & Row 8 & Row 9\\
+        \toprule
+        Col 1 & 16847261.84 & 20* & 25 & 2711808 & 2320534 & 2505042.58 & 2799074.26 & 6510758 & 0 \\
+        Col 2 & 4373279     & 5* & 5* & 719049 & 659680 & 688962 & 756529 & 1549049 & 0 \\
+        Col 3 & 1986129     & 5* & 5* & 398062 & 348039 & 354711 & 418778 & 466529 & 0 \\
+        Col 4 & 1808861     & 0 & 0 & 223990 & 221332 & 241913 & 258233 & 863393 & 0 \\
+        Col 5 & 578289      & 0 & 0 & 96997 & 90309 & 92338 & 79518 & 219127 & 0 \\
+        Col 6 & 3703896     & 15* & 5* & 642238 & 515003 & 534147 & 620392 & 1392096 & 0 \\
+        Col 7 & 124336      & 5* & 0 & 36311 & 32132 & 25770 & 18150 & 11968* & 0 \\
+        Col 8 & 526279      & 0 & 0 & 93589 & 94957 & 110930 & 81799 & 145004 & 0 \\
+        Col 9 & 2234995     & 10* & 5* & 345803 & 251358 & 251188 & 303377 & 1083254 & 0 \\
+        Col 10 & 818286     & 0 & 0 & 166535 & 136556 & 146259 & 217066 & 151870 & 0 \\
+        Col 11 & 4576115.84 & 0 & 0 & 648972 & 543570 & 663896.58 & 775132.26 & 1944545 & 0 \\
+        Col 12 & 485326     & 0 & 0 & 63767 & 75442 & 87305 & 59953 & 198859 & 0 \\
+        Col 13 & 3664559.84 & 0 & 0 & 537911 & 430851 & 515019.58 & 643762.26 & 1537016 & 0 \\
+        Col 14 & 426230     & 0 & 0 & 47294 & 37277 & 61572 & 71417 & 208670 & 0 \\
+        Col 15 & 4193971    & 0 & 15* & 701549 & 602281 & 618037 & 647021 & 1625068 & 0 \\
+        Col 16 & 2752743    & 0 & 15* & 488613 & 392395 & 363490 & 402925 & 1105305 & 0 \\
+        Col 17 & 1441228    & 0 & 0 & 212936 & 209886 & 254547 & 244096 & 519763 & 0 \\
+        Col 18 & 0          & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+      \end{tabular}
+    \caption{Original Targus Instance Data Table with Sensitive Cells Marked with *}
+    \label{tab:targus-original}
+\end{table}
 
-\subsubsection{Results}
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{c | c | c}
+        \textbf{Number Cell} & \textbf{Lower Protection Level} & \textbf{Upper Protection Level} \\
+        \toprule
+       19	& 6   & 6 \\
+       20	& 1.67 & 1.67 \\
+       21	& 1.67 & 1.67 \\
+       24	& 5   & 5 \\
+       25	& 1.67 & 1.67 \\
+       27	& 3.33 & 3.33 \\
+       38	& 1.67 & 1.67 \\
+       39	& 1.67 & 1.67 \\
+       42	& 1.67 & 1.67 \\
+       45	& 1.67 & 1.67 \\
+       51	& 5   & 5 \\
+       52	& 5   & 5 \\
+       133	& 3480 & 3480
+    \end{tabular}
+    \caption{Table of Targus Instance Protection Levels for Sensitive Cells}
+    \label{tab:targus-protection-levels}
+\end{table}
+
+
+Table Constraints:
+\begin{enumerate}
+  \item[] \hspace*{-\leftmargin}\textbf{Row Constraints:}
+  \item  $x_{1} + x_{2} + x_{3} + x_{4} + x_{5} + x_{6} - x_{7} = 0$
+  \item[] \hspace*{-\leftmargin}\textbf{Column Constraints:}
+  \item  $x_{1} + x_{8} + x_{15} + x_{22} - x_{29} = 0$
+\end{enumerate}
+
+
+
+
+\section{Implementation Details}
+
+\subsection{Subproblem Lower}
+
+
+\subsection{Subproblem Upper}
+
+
+\section{Computational Experiments and Results}
+
+
+\subsection{small}
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{c | c | c}
+        \textbf{Cell ID} & \textbf{Cost} & \textbf{Is Primary} \\
+        \toprule
+        1          & 1          & 1   \\      
+        3          & 1          & 0   \\    
+        5          & 1          & 1   \\     
+        8          & 1          & 0   \\    
+        9          & 1          & 1   \\    
+        10         & 1          & 0   \\    
+        12         & 1          & 0   \\    
+        15         & 1          & 0   \\    
+        22         & 1          & 0   \\    
+        24         & 1          & 1   \\
+    \end{tabular}
+    \caption{Table of Cells to be Suppressed in Small Instance}
+    \label{tab:small-suppressed-cells}
+\end{table}
+
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{l | c c c c c c c}
+             & Col 1 & Col 2 & Col 3 & Col 4 & Col 5 & Col 6 & Col 7 \\
+        \toprule
+        Row 1 & x    & 8    & x    & 5    & x   & 38   & \textbf{361} \\
+        Row 2 & x    & x    & x    & 76   & x   & 31   & \textbf{252} \\
+        Row 3 & x    & 33   & 20   & 60   & 35   & 44   & \textbf{203} \\
+        Row 4 & x    & 28   & x    & 41   & 22   & 63   & \textbf{197} \\
+        Row 5 & \textbf{326} & \textbf{137} & \textbf{101} & \textbf{182} & \textbf{91} & \textbf{176} & \textbf{1013} \\
+    \end{tabular}
+    \caption{Small Data Table with Suppressing Sensitive Cells}
+    \label{tab:small-suppressed-table}
+\end{table}
+
+
+
+
+
+\subsection{Example\_2D}
 
 \begin{table}[h]
     \centering
@@ -493,78 +571,11 @@ Table Constraints:
 \end{table}
 
 
+
+
 \subsection{targus}
-In Table \ref{tab:targus-original} we can see the original data table for \textit{targus.ampl} data instance created by rows($\rightarrow$), with the sensitive cells marked with *. 
-Due to the large values in the table, we have used commas to separate thousands.
-Due to the row-wise size of the table, we have transposed the original table for better visualization.
-Row 1 contains the totals for the columns.
-\begin{table}[h]
-    \centering
-    \begin{tabular}{l | c c c c c c c c c}
-         & Row 1 & Row 2 & Row 3 & Row 4 & Row 5 & Row 6 & Row 7 & Row 8 & Row 9\\
-        \toprule
-        Col 1 & 16847261.84 & 20* & 25 & 2711808 & 2320534 & 2505042.58 & 2799074.26 & 6510758 & 0 \\
-        Col 2 & 4373279     & 5* & 5* & 719049 & 659680 & 688962 & 756529 & 1549049 & 0 \\
-        Col 3 & 1986129     & 5* & 5* & 398062 & 348039 & 354711 & 418778 & 466529 & 0 \\
-        Col 4 & 1808861     & 0 & 0 & 223990 & 221332 & 241913 & 258233 & 863393 & 0 \\
-        Col 5 & 578289      & 0 & 0 & 96997 & 90309 & 92338 & 79518 & 219127 & 0 \\
-        Col 6 & 3703896     & 15* & 5* & 642238 & 515003 & 534147 & 620392 & 1392096 & 0 \\
-        Col 7 & 124336      & 5* & 0 & 36311 & 32132 & 25770 & 18150 & 11968* & 0 \\
-        Col 8 & 526279      & 0 & 0 & 93589 & 94957 & 110930 & 81799 & 145004 & 0 \\
-        Col 9 & 2234995     & 10* & 5* & 345803 & 251358 & 251188 & 303377 & 1083254 & 0 \\
-        Col 10 & 818286     & 0 & 0 & 166535 & 136556 & 146259 & 217066 & 151870 & 0 \\
-        Col 11 & 4576115.84 & 0 & 0 & 648972 & 543570 & 663896.58 & 775132.26 & 1944545 & 0 \\
-        Col 12 & 485326     & 0 & 0 & 63767 & 75442 & 87305 & 59953 & 198859 & 0 \\
-        Col 13 & 3664559.84 & 0 & 0 & 537911 & 430851 & 515019.58 & 643762.26 & 1537016 & 0 \\
-        Col 14 & 426230     & 0 & 0 & 47294 & 37277 & 61572 & 71417 & 208670 & 0 \\
-        Col 15 & 4193971    & 0 & 15* & 701549 & 602281 & 618037 & 647021 & 1625068 & 0 \\
-        Col 16 & 2752743    & 0 & 15* & 488613 & 392395 & 363490 & 402925 & 1105305 & 0 \\
-        Col 17 & 1441228    & 0 & 0 & 212936 & 209886 & 254547 & 244096 & 519763 & 0 \\
-        Col 18 & 0          & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
-      \end{tabular}
-    \caption{Original Targus Instance Data Table with Sensitive Cells Marked with *}
-    \label{tab:targus-original}
-\end{table}
 
-
-\begin{table}[h]
-    \centering
-    \begin{tabular}{c | c | c}
-        \textbf{Number Cell} & \textbf{Lower Protection Level} & \textbf{Upper Protection Level} \\
-        \toprule
-       19	& 6   & 6 \\
-       20	& 1.67 & 1.67 \\
-       21	& 1.67 & 1.67 \\
-       24	& 5   & 5 \\
-       25	& 1.67 & 1.67 \\
-       27	& 3.33 & 3.33 \\
-       38	& 1.67 & 1.67 \\
-       39	& 1.67 & 1.67 \\
-       42	& 1.67 & 1.67 \\
-       45	& 1.67 & 1.67 \\
-       51	& 5   & 5 \\
-       52	& 5   & 5 \\
-       133	& 3480 & 3480
-    \end{tabular}
-    \caption{Table of Targus Instance Protection Levels for Sensitive Cells}
-    \label{tab:targus-protection-levels}
-\end{table}
-
-
-Table Constraints:
-\begin{enumerate}
-  \item[] \hspace*{-\leftmargin}\textbf{Row Constraints:}
-  \item  $x_{1} + x_{2} + x_{3} + x_{4} + x_{5} + x_{6} - x_{7} = 0$
-  \item[] \hspace*{-\leftmargin}\textbf{Column Constraints:}
-  \item  $x_{1} + x_{8} + x_{15} + x_{22} - x_{29} = 0$
-\end{enumerate}
-
-
-
-
-\subsubsection{Results}
-
-\begin{table}[h]
+\begin{table}[H]
     \centering
     \begin{tabular}{c | c | c}
         \textbf{Cell ID} & \textbf{Cost} & \textbf{Is Primary} \\
@@ -593,7 +604,7 @@ Table Constraints:
     \label{tab:targus-suppressed-cells}
 \end{table}
 
-\begin{table}[h]
+\begin{table}[H]
     \centering
     \begin{tabular}{l | c c c c c c c c c}
          & Row 1 & Row 2 & Row 3 & Row 4 & Row 5 & Row 6 & Row 7 & Row 8 & Row 9\\
