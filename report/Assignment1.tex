@@ -151,7 +151,7 @@ The problem has:
   \item $2(m+2n)|\mathcal{P}|$ constraints
 \end{itemize}
 
-\subsection{Benders decomposition}
+\subsection{Benders decomposition} \label{sec:benders-decomposition-formulation}
 
 Benders decomposition partitions the problem into a master and subproblems, and
 iterates efficiently between them to find the optimal solution.
@@ -163,13 +163,13 @@ iterates efficiently between them to find the optimal solution.
 \textbf{Original Problem}
 
 Given the original problem: 
-
-\begin{align*}
+\begin{align*} 
 (P) = \quad \min \quad & c^T x + q^T y \\
 \text{s. to} \quad & Tx + Wy = h \\
 & x \in X \\
 & y \geq 0
-\end{align*}
+\end{align*}    
+
 
 The two following problems are derivated:
 \begin{itemize}
@@ -181,8 +181,8 @@ The two following problems are derivated:
   & x \in X.
   \end{align*}
   \item \textbf{Subproblem Formulation}
-  
-  \begin{align*}
+
+    \begin{align*}
   (Q_D) = \quad \max \quad & u^T(h - Tx) \\
   \text{s. to} \quad & W^T u \leq q \\
   & u \in \mathbb{R}^m
@@ -196,12 +196,12 @@ problem to an equivalent of Benders starting problem.
 \min \quad & \sum_{i=1}^{n} c_i y_i \\
 \text{s. to} \quad & Ax^{l,p} = 0 & \forall p \in \mathcal{P} \\
 & Ax^{u,p} = 0 & \forall p \in \mathcal{P} \\
-& (l_i - a_i)y_i - x_i^{l,p} + s_{l,i}^{l,p} = 0 & i=1 \dots n, \forall p \in \mathcal{P} \\
-& (a_i - u_i)y_i + x_i^{l,p} + s_{u,i}^{l,p} = 0 & i=1 \dots n, \forall p \in \mathcal{P} \\
-& (l_i - a_i)y_i - x_i^{u,p} + s_{l,i}^{u,p} = 0 & i=1 \dots n, \forall p \in \mathcal{P} \\
-& (a_i - u_i)y_i + x_i^{u,p} + s_{u,i}^{u,p} = 0 & i=1 \dots n, \forall p \in \mathcal{P} \\
-& x_p^{l,p} + s_{p}^{l,p} = -lpl_p & \forall p \in \mathcal{P} \\
-& x_p^{u,p} - s_{p}^{u,p} = upl_p & \forall p \in \mathcal{P} \\
+& (l_i - a_i)y_i \leq x_i^{l,p} & i=1 \dots n, \forall p \in \mathcal{P} \\
+& x_i^{l,p} \leq (u_i - a_i)y_i & i=1 \dots n, \forall p \in \mathcal{P} \\
+& (l_i - a_i)y_i \leq x_i^{u,p} & i=1 \dots n, \forall p \in \mathcal{P} \\
+& x_i^{u,p} \leq (u_i - a_i)y_i & i=1 \dots n, \forall p \in \mathcal{P} \\
+& x_p^{l,p} \leq -lpl_p & \forall p \in \mathcal{P} \\
+& x_p^{u,p} \geq upl_p & \forall p \in \mathcal{P} \\
 & y_i \in \{0, 1\}, \quad x, s \geq 0
 \end{align*}
 
@@ -210,95 +210,125 @@ we take $y_i$ as the $x$ in Benders and $[x,s]$ as the $y$.
 
 The Original Problem now becomes:
 \begin{table}[h]
-\centering
-\begin{tabular}{ c c c }
-   & \textbf{c\textsuperscript{T}x} & \textbf{q\textsuperscript{T}y} \\
-  \textbf{Objective function (min)} & $c y$ & $+ 0 x^{l,p}+x^{u,p}$
-\end{tabular}
+    \centering
+    \begin{tabular}{| l | c c |}
+        \toprule
+        & \textbf{c\textsuperscript{T}x} & \textbf{q\textsuperscript{T}y} \\
+        \hline
+        \textbf{Objective function (min)} & $\sum_{i=1}^{n} c_i y_i$ & $+ 0 \sum_{i=1}^{n}x_{i}^{l,p}+x_{i}^{u, p}$ \\
+        \bottomrule
+    \end{tabular}
 \end{table}
 
 \begin{table}[h]
     \centering
-    \begin{tabular}{c c c c}
-        \hline
+    \begin{tabular}{| l | c c c |}
+        \toprule
         \textbf{Constraint Type} & \textbf{Tx} & \textbf{+Wy} & \textbf{=h}\\
         \hline
-        \textbf{Table Conservation} & 0 & \makecell[l]{$+ Ax^{l,p}$\\ $+ Ax^{u,p}$} & \makecell[l]{=b \\ =b} \\
+        \textbf{Table Conservation} & 0 & \makecell[l]{$+ Ax^{l,p}$\\ $+ Ax^{u,p}$} & 0 \\
         \hline
         \textbf{Lower Capacity} & \makecell[l]{$(l - a)y$\\ $(l - a)y$} &  \makecell[l]{$-x^{l,p}$\\ $-x^{u,p}$} & $\le 0$ \\
         \hline
         \textbf{Upper Capacity} & \makecell[l]{$(a - u)y$\\ $(a - u)y$} & \makecell[l]{$+ x^{l,p}$ \\ $+ x^{u,p}$} & $\le 0$ \\
         \hline
         \textbf{Protection Levels} & 0 & \makecell[l]{$x^{l,p}$\\ $x^{u,p}$} & \makecell[l]{ $\le -lpl$\\ $ \ge upl$}\\
-        \hline
+        \bottomrule
     \end{tabular}
 \end{table}
 
 \begin{table}[h]
 \centering
-\begin{tabular}{ c c c }
+\begin{tabular}{ |c | c c |}
+    \hline
    & \textbf{$x \in X$} & \textbf{$y \geq 0$} \\
-  \textbf{Domain Constraints} & $y_i \in \{0, 1\}$ & $\quad x, s \geq 0$
+    \hline
+  \textbf{Domain Constraints} & $y \in \{0, 1\}$ & $\quad x^{l}, x^{u} \geq 0$ \\
+    \hline
 \end{tabular}
 \end{table}
 
-Primal Subproblem Q:
-subproblem as an optimization to see if the protection level can be reached given the fixed suppression $\bar{y}$:
-for each primary cell $p[j]$:
-\begin{align*}
-(Q_{lower}) = \quad \min \quad & x_{p[j]} \\
-\text{s. to} \quad & Ax_l = 0 [\lambda]\\
-& (l_i - a_i)\bar{y}_i \leq x_{l,i} [\mu_{ll}]\\
-&  x_{l,i} \leq (u_i - a_i)\bar{y}_i [\mu_{ul}]\\
-& Goal: Objective \quad value \leq -lpl_{p[j]}?
-\end{align*}
-\begin{align*}
-(Q_{upper}) = \quad \max \quad & x_{p[j]} \\
-\text{s. to} \quad & Ax_u = 0 [\lambda]\\
-& (l_i - a_i)\bar{y}_i \leq x_{u,i} [\mu_{lu}]\\
-&  x_{u,i} \leq (u_i - a_i)\bar{y}_i [\mu_{uu}]\\
-& Goal: Objective \quad value \leq -upl_{p[j]}?
-\end{align*}
-
-Dual of Subproblem Q:
-To ensure a suppression pattern is valid, you have to check if a primary cell is protected from "below" (someone trying to guess a value too low) and from "above" (someone trying to guess a value too high).
-Dual of Subproblem Q for each primary cell $p[j]$:
-\begin{align*}
-(Q_{D lower}) = \quad \max \quad & \sum_{i=1}^{n}((l_i - a_i)\mu_{ll,i} - (u_i-a_i)\mu_{ul,i})\bar{y}_i  \\
-\text{s. to} \quad & A^T\lambda + \mu_{ll}  - \mu_{ul} = e_p \\
-& \mu_{ll} \geq 0, \mu_{ul} \geq 0, \lambda free
-\end{align*}
-If the optimal value of this objective is greater than $-lpl$, that means the pattern is insecure and we have to add a lower Benders cut to the Master Problem.
-\begin{align*}
--lpl \geq \quad & \sum_{i=1}^{n}((l_i - a_i)\mu_{ll,i} - (u_i-a_i)\mu_{ul,i})y_i  \\
-\end{align*}
-
-\begin{align*}
-(Q_{D upper}) = \quad \max \quad & \sum_{i=1}^{n}((u_i-a_i)\mu_{uu,i}-(l_i - a_i)\mu_{lu,i})\bar{y}_i  \\
-\text{s. to} \quad & A^T\lambda + \mu_{lu}  - \mu_{uu}   = -e_p \\
-& \mu_{lu} \geq 0, \mu_{uu} \geq 0, \lambda free
-\end{align*}
-If the optimal value of this objective is less than $upl$, that means the pattern is insecure and we have to add an upper Benders cut to the Master Problem.
-\begin{align*}
-upl \leq \quad & \sum_{i=1}^{n}((u_i-a_i)\mu_{uu,i}-(l_i - a_i)\mu_{lu,i})y_i  \\
-\end{align*}
-If we have $P$ primary cells, we will have to solve $2P$ subproblems at each iteration of Benders decomposition.
-
-Master Problem: 
-We have to add the cuts for all the insecure primary cells found in the subproblems. 
-If we have 
+\subsubsection{Subproblem} \label{sec:subproblem-formulation}
+With this formulation we can now derive the Subproblem and Master Problem for Benders decomposition.
+The subproblem will have to find the maximum deviation that an attacker can achieve for each primary cell $p$ while respecting the constraints of the table and it is whithin the protection levels.
+Primal subproblem Q for each primary cell $p$:
 \begin{itemize}
-  \item $\mathcal{J}_{l}$: set of lower cuts added until iteration $r$ from insecure primary cells found with the lower dual subproblem
-  \item $\mathcal{J}_{u}$: set of upper cuts added until iteration $r$ from insecure primary cells found with the upper dual subproblem
-  \item for each cut $j_l \in \mathcal{J}_{l}$, we have $\bar{\mu}_{ll}^{p, j_l}, \bar{\mu}_{ul}^{p, j_l}$ from the solution of the corresponding lower dual subproblem
-  \item for each cut $j_u \in \mathcal{J}_{u}$, we have $\bar{\mu}_{lu}^{p, j_u}, \bar{\mu}_{uu}^{p, j_u}$ from the solution of the corresponding upper dual subproblem
+    \item Lower protection level subproblem:
+        \begin{align*}
+        (Q_) = \quad \min \quad & x_{p} \\
+        \text{s. to} \quad & Ax = b [\lambda]\\
+        & (l_i - a_i)\bar{y}_i \leq x_{i} [\mu^{l}]\\
+        &  x_{i} \leq (u_i - a_i)\bar{y}_i [\mu^{u}]\\
+        & -x_{p} \leq  lpl_{p} [\gamma]\\
+        \end{align*}
+
+
+    \item  Upper protection level subproblem:
+        \begin{align*}
+        (Q_) = \quad \min \quad & x_{p[j]} \\
+        \text{s. to} \quad & Ax = b [\lambda]\\
+        & (l_i - a_i)\bar{y}_i \leq x_{i} [\mu^{l}]\\
+        &  x_{i} \leq (u_i - a_i)\bar{y}_i [\mu^{u}]\\
+        & x_{p[j]} \leq  upl_{p[j]}  [\gamma]\\ 
+        \end{align*}
+\end{itemize}
+
+
+Therefore, if we denote $protection\_lvl$ as either $lpl_{p}$ or $upl_{p}$, and $L$ as the corresponding correct sign, both subproblems can be summarized as:
+\begin{align*}
+(Q_) = \quad \min \quad & x_{p} \\
+\text{s. to} \quad & Ax = b [\lambda]\\
+& (l_i - a_i)\bar{y}_i \leq x_{i} [\mu^{l}]\\
+&  x_{i} \leq (u_i - a_i)\bar{y}_i [\mu^{u}]\\
+& L x_{p} \leq  protection\_lvl_{p}\\
+\end{align*}
+
+Given the primary, with $\mathcal{C}$ as the number of constraints in A matrix, we can derive the dual subproblem.
+\begin{align*}
+(Q_{D}) = \quad \max \quad & \sum_{c \in \mathcal{C}} \lambda_c b_c
++ \sum_{i=1}^{n}((l_i - a_i)\mu_{i}^{l} + (u_i-a_i)\mu_{i}^{u})\bar{y}_i  
++ \gamma protection\_lvl_{p[j]}\\
+\text{s. to}  \quad & A^T\lambda + \mu^{l}  - \mu^{u} = e_p \gamma & i= 1..n \\
+& \mu^{l} \geq 0, \mu^{u} \leq 0, \lambda free, \gamma \geq 0 
+\end{align*}
+
+\subsubsection{Benders Cuts}
+
+With this changes, we no longer have lower and upper subproblems that gives us different cuts to add to the Master Problem.
+The cuts to add to the Master Problem will depend on the optimal value of the combined dual subproblem objective such as:
+\begin{itemize}
+    \item Original bender cuts:
+    \begin{itemize}
+        \item Lower Benders cut:
+            \begin{align*}
+            -lpl \geq \quad & \sum_{i=1}^{n}((l_i - a_i)\mu_{ll,i} - (u_i-a_i)\mu_{ul,i})y_i  \\
+            \end{align*}
+        \item Upper Benders cut:
+            \begin{align*}
+            upl \leq \quad & \sum_{i=1}^{n}(-(l_i - a_i)\mu_{lu,i} + (u_i-a_i)\mu_{uu,i})y_i  \\
+            \end{align*}
+    \end{itemize}
+    \item New Bender cuts:
+        \begin{align*}
+        \sum_{i=1}^{n}((l_i - a_i)\mu_{i}^{l} + (u_i-a_i)\mu_{i}^{u})y_i & \quad \forall k \in \mathcal{CUTS} \\
+        + \gamma_{k} protection\_lvl_{k} \leq 0 \\
+        \end{align*}
+\end{itemize}
+
+\subsubsection{Master Problem}
+The Master Problem will now seek to minimize the suppression cost while respecting the Benders cuts added from previous iterations.
+
+Given:
+\begin{itemize}
+  \item $\mathcal{CUTS}$: set of cuts added until iteration $r$ from insecure primary cells found with the lower dual subproblem
+  \item for each cut $k \in \mathcal{CUTS}$, we have $\bar{\mu}_{l}^{p, k}, \bar{\mu}_{u}^{p, k}, \bar{\gamma}$ from the solution of the dual subproblem
 \end{itemize}
 The Master Problem at iteration $r$ is:
 \begin{align*}
 (BP_r) = \quad \min \quad & \sum_{i=1}^{n}c_i y_i \\
 \text{s. to} \quad & y_p = 1 & \forall p \in \mathcal{P}\\
-& -lpl_p \geq  \sum_{i=1}^{n}((l_i - a_i)\bar{\mu}_{ll,i}^{p, j_l} - (u_i-a_i)\bar{\mu}_{ul,i}^{p, j_l})y_i   & \forall p \in \mathcal{P},\forall j_l \in \mathcal{J}_l\\
-& upl_p \leq \sum_{i=1}^{n}((u_i-a_i)\bar{\mu}_{uu,i}^{p, j_u}-(l_i - a_i)\bar{\mu}_{lu,i}^{p, j_u})y_i  & \forall p \in \mathcal{P},\forall j_u \in \mathcal{J}_u\\
+& \sum_{i=1}^{n}((l_i - a_i)\bar{\mu}_{i}^{l} + (u_i-a_i) \bar{\mu}_{i}^{u})y_i & \quad \forall k \in \mathcal{CUTS} \\
+&  + \bar{\gamma}_{k} protection\_lvl_{k} \leq 0 \\
 & y_i \in \{0, 1\}  
 \end{align*}
 
@@ -482,7 +512,7 @@ Table Constraints:
 
 
 \section{Implementation Details}
-
+Given the the mathematical formulation of the Benders decomposition from Section \ref{sec:benders-decomposition-formulation}, we have implemented the master problem and subproblems:
 \subsection{Subproblem Lower}
 
 
