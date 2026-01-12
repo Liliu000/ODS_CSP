@@ -1,0 +1,92 @@
+reset;
+
+model gemini.mod;
+data examples/small.ampl; # Load your instance here
+
+option solver cplex;
+option cplex_options 'mipdisplay 2 mipinterval 100';
+
+problem Master: y, Mandatory_Suppression, Total_Cost, Lower_Prot_Cut, Upper_Prot_Cut;
+problem Sub: lambda, mu_l, mu_u, Dual_Obj_L, Dual_Obj_U, Dual_Constraint;
+
+# Initialization
+let nCUT_L := 0;
+let nCUT_U := 0;
+param violated default 1;
+param tolerance := 1e-6;
+param iteration default 0;
+
+# Main Benders Loop
+repeat {
+    let iteration := iteration + 1;
+    if iteration > 2 then {break;}
+    # --- 1. SOLVE MASTER PROBLEM ---
+    printf "\n--- ITERATION %d: Master Problem ---\n", iteration;
+    solve Master;
+    
+    let violated := 0;
+    
+    # --- 2. SOLVE SUBPROBLEMS FOR EACH PRIMARY ---
+    # We loop through each primary to check protection levels
+    for {j in P_INDEX} {
+        
+        # Transfer data from Master to Sub
+        let current_p_cell := p[j];
+        for {i in CELLS} let current_y[i] := y[i];
+
+        # Switch to Subproblem environment
+        solve Sub;
+
+        # 2a. Check Lower Protection Scenario
+        printf "Checking Lower Protection for Primary %d (Cell %d)...\n", j, p[j];
+        #solve Dual_Obj_L;
+
+        # If the dual objective (best possible lower value) is > required lower level
+        if Dual_Obj_L > -plpl[j] + tolerance then {
+            let nCUT_L := nCUT_L + 1;
+            # Store dual results to generate the cut in the Master
+            let {idx in CONSTR} lambda_L[idx,j,nCUT_L] := lambda[idx];
+            let {i in CELLS} mu_l_L[i,j,nCUT_L] := mu_l[i];
+            let {i in CELLS} mu_u_L[i,j,nCUT_L] := mu_u[i];
+            
+            let violated := 1;
+            printf ">>> Violation found! Adding Lower Cut %d\n", nCUT_L;
+        }
+
+        # 2b. Check Upper Protection Scenario
+        printf "Checking Upper Protection for Primary %d (Cell %d)...\n", j, p[j];
+        #solve Dual_Obj_U;
+
+        # If the dual objective (best possible upper value) is < required upper level
+        if Dual_Obj_U < pupl[j] - tolerance then {
+            let nCUT_U := nCUT_U + 1;
+            # Store dual results to generate the cut in the Master
+            let {idx in CONSTR} lambda_U[idx,j,nCUT_U] := lambda[idx];
+            let {i in CELLS} mu_l_U[i,j,nCUT_U] := mu_l[i];
+            let {i in CELLS} mu_u_U[i,j,nCUT_U] := mu_u[i];
+            
+            let violated := 1;
+            printf ">>> Violation found! Adding Upper Cut %d\n", nCUT_U;
+        }
+    }
+
+    # If no primary cell violated its protection levels, we are done
+    if violated == 0 then {
+        printf "\n*** Optimal Protection Pattern Found! ***\n";
+        break;
+    }
+
+}; # while {violated == 1};
+
+# Final Results
+#problem Master;
+printf "Total Lower Cuts Added: %d\n", nCUT_L;
+printf "Total Upper Cuts Added: %d\n", nCUT_U;
+
+display y, Total_Cost;
+printf "\nSuppressed Cells (y_i = 1):\n";
+printf "%-10s | %-10s | %-10s\n", "Cell ID", "Cost", "Is Primary";
+for {i in CELLS: y[i] > 0.5} {
+    printf "%-10d | %-10d | %-10d\n", i, c[i], is_p[i];
+}
+printf "========================================\n";
