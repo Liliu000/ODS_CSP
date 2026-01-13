@@ -14,12 +14,11 @@
 \contentsline {subsection}{\numberline {4.1}AMPL models}{9}{subsection.4.1}%
 \contentsline {subsubsection}{\numberline {4.1.1}Data params}{9}{subsubsection.4.1.1}%
 \contentsline {subsubsection}{\numberline {4.1.2}Subproblem}{10}{subsubsection.4.1.2}%
-\contentsline {subsection}{\numberline {4.2}AMPL execution script}{10}{subsection.4.2}%
-\contentsline {subsubsection}{\numberline {4.2.1}Initialization}{10}{subsubsection.4.2.1}%
-\contentsline {subsubsection}{\numberline {4.2.2}Loop}{11}{subsubsection.4.2.2}%
-\contentsline {section}{\numberline {5}Computational Experiments and Results}{12}{section.5}%
-\contentsline {subsection}{\numberline {5.1}small}{12}{subsection.5.1}%
-\contentsline {subsection}{\numberline {5.2}Example\_2D}{13}{subsection.5.2}%
-\contentsline {subsection}{\numberline {5.3}targus}{13}{subsection.5.3}%
-\contentsline {section}{\numberline {6}References}{14}{section.6}%
-\contentsline {section}{\numberline {A}AMPL Files}{15}{appendix.A}%
+\contentsline {subsubsection}{\numberline {4.1.3}Master Problem}{10}{subsubsection.4.1.3}%
+\contentsline {subsection}{\numberline {4.2}AMPL execution script}{11}{subsection.4.2}%
+\contentsline {subsubsection}{\numberline {4.2.1}Initialization}{11}{subsubsection.4.2.1}%
+\contentsline {subsubsection}{\numberline {4.2.2}Loop}{12}{subsubsection.4.2.2}%
+\contentsline {section}{\numberline {5}Results}{13}{section.5}%
+\contentsline {subsection}{\numberline {5.1}small}{13}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Example\_2D}{14}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}targus}{14}{subsection.5.3}%

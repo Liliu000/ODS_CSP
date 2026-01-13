@@ -1,0 +1,168 @@
+### LOAD MODEL AND DATA ###
+reset;
+
+model csp_benders2.mod;
+data ../examples/targus.ampl;
+#data ../examples/example_2D.ampl;
+#data ../examples/small.ampl;
+model csp_check.mod;
+
+### SOLVER OPTIONS ###
+option solver cplex;      
+option display_precision 6;
+option solve_messages 0;  # 1 for debug messages
+
+### INITIALIZATION ###
+let nCUT := 0;					#stores the number of cuts created
+param violation_found binary default 0; # stores if there has been a protection violation
+param iteration default 0;		# stores in which iteration we are
+param epsilon := 1e-7;			# small tolerance for calculations
+param current_dual_val;			# stores the current value of the dual subproblem objective
+suffix unbdd OUT;				# variable needed to get the rays when dual subproblem is unbounded
+
+set cut_types{1..2} := {-1, 1};	# stores the two types of cuts of problem
+								# -1 for lower protection, 1 for upper protection
+
+# defines de problem master and the variables it calculates
+problem Master:
+    y,
+    Total_Cost,
+    Primary_Must_Be_Suppressed,
+    ProtectionCut;
+    
+# defines de dual subproblem and the variables it calculates
+problem Dual_Problem:
+    LAMBDA,
+    GAMMA,
+    MU_L,
+    MU_U,
+    Dual_Objective_Function,
+    Dual_Restriction;
+    
+printf "\nStarting Benders Decomposition for CSP\n";
+printf "========================================\n";
+
+repeat {
+    let iteration := iteration + 1;
+    let violation_found := 0;		#initialization of violation
+    	
+    # 1. SOLVE MASTER PROBLEM
+    printf "\nIteration %d: Solving Master Problem... \n", iteration;
+    solve Master;
+    printf "Cost: %.2f\n", Total_Cost;
+	
+    # Fix the current suppression pattern for the subproblems
+    for {i in CELLS} {
+        let y_fixed[i] := y[i];
+        printf "%d ", y[i];
+    }
+    printf "\n";
+
+    # 2. SUBPROBLEM LOOP
+    # Check every primary cell p for both Lower and Upper protection
+   	for {i in 1..2, cut_type in cut_types[i]} {
+	    for {j in P_INDEX} {
+	        let p_index := p[j];		#sets the index of the primary cell we are checking
+	        let L_or_U  := cut_type;	# sets for what protection we are checking: lower or upper
+	        
+	        # decides what protection level we need to check for 
+	        	#depending if we are checking for upper or lower protection
+	        let PROTECTION_LVL := if cut_type == 1 then pupl[j] else plpl[j];
+	        
+	        printf "\n primary cell %d \n", p_index;
+			
+			# SOLVE SUBPROBLEM
+	        solve Dual_Problem;
+	        
+	        # if it is unbounded, there is a protection that has been violated,
+	        	#therefore, we need to add a cut
+	        if Dual_Problem.result = "unbounded" then {
+	                  
+	            let nCUT := nCUT + 1;		# actualize number of cuts
+	            
+	            # store all dual multipliers needed to calculate ray formed by dual subproblem objective
+	            let gamma[nCUT] := GAMMA.unbdd;
+                let {ii in CELLS} mu_l[ii, nCUT] := MU_L[ii].unbdd;
+                let {ii in CELLS} mu_u[ii, nCUT] := MU_U[ii].unbdd;
+	            let protection_lvl[nCUT] := PROTECTION_LVL;
+	            
+	            let violation_found := 1;
+	            
+	            if cut_type == 1 then {
+					printf "Added a cut for upper protection in primary cell %d\n", p[j];
+				}
+				else {
+					printf "Added a cut for lower protection in primary cell %d\n", p[j];
+				}
+			} 
+	    }
+    }
+    # 3. CONVERGENCE CHECK 
+    # if no new constraints were added for none of the primary cells, the solution is optimal
+    if violation_found = 0 then {
+        printf "\nConvergence reached! No violations found.\n";
+        break;
+    }
+};
+
+param y_num default 0;
+let y_num := sum {i in CELLS} (if y[i] > 0.5 then 1 else 0);
+
+### FINAL RESULTS ###
+printf "\n========================================\n";
+printf "Benders Finished in %d iterations\n", iteration;
+printf "Total Cuts: %d\n", nCUT;
+printf "Final Suppression Cost: %.2f\n", Total_Cost;
+printf "Number of Suppressed cells: %f \n", y_num;
+
+printf "\nSuppressed Cells (y_i=1):\n";
+printf "%-10s | %-10s | %-10s\n", "Cell ID", "Cost", "Is Primary";
+for {i in CELLS: y[i] > 0.5} {
+    printf "%-10d | %-10d | %-10d\n", i, c[i], is_p[i];
+}
+printf "========================================\n";
+
+
+
+
+
+
+# 1. Setup Audit Problems
+problem Audit_Min: x_audit, Audit_Conservation, Suppressed_Bounds, Unsuppressed_Fixed, Min_Cell_Val;
+problem Audit_Max: x_audit, Audit_Conservation, Suppressed_Bounds, Unsuppressed_Fixed, Max_Cell_Val;
+
+# 2. DECLARE parameters for storing results
+param found_y {CELLS};
+let {i in CELLS} found_y[i] := y[i];
+
+param actual_min;  # Fixes the syntax error
+param actual_max;  # Fixes the syntax error
+
+# Optional: Clean up solver output for the loop
+option solver_msg 0;
+
+printf "\n================ AUDIT RESULTS ================\n";
+
+for {j in P_INDEX} {
+    let target_p := p[j]; 
+    let {i in CELLS} y_fixed[i] := found_y[i];
+
+    # Solve Min subproblem
+    solve Audit_Min;
+    let actual_min := Min_Cell_Val; # Now this will work
+
+    # Solve Max subproblem
+    solve Audit_Max;
+    let actual_max := Max_Cell_Val; # Now this will work
+
+    # Print the verification logic
+    printf "Cell %d: [%.2f, %.2f] vs Protection [%.2f, %.2f] -> ", 
+        target_p, actual_min, actual_max, 
+        (a[target_p] - plpl[j]), (a[target_p] + pupl[j]);
+
+    if (actual_min <= a[target_p] - plpl[j] + 0.0001 and 
+        actual_max >= a[target_p] + pupl[j] - 0.0001) then 
+        printf "SAFE\n";
+    else 
+        printf "FAILED\n";
+}

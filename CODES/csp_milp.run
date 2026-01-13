@@ -1,8 +1,9 @@
 reset;
 model csp_milp.mod;
 model csp_check.mod;
-data examples/small.ampl;
-
+data ../examples/targus.ampl;
+#data ../examples/example_2D.ampl;
+#data ../examples/small.ampl;
 option solver cplex;
 
 # 1. Solve the Master MILP first 
@@ -13,6 +14,15 @@ problem Master_MILP: y, x_l, x_u, Total_Cost, Lower_Bound_Prot, Upper_Bound_Prot
                     Primary_Must_Be_Suppressed;
 
 solve Master_MILP;
+
+
+printf "Final Suppression Cost: %.2f\n", Total_Cost;
+printf "\nSuppressed Cells (y_i=1):\n";
+printf "%-10s | %-10s | %-10s\n", "Cell ID", "Cost", "Is Primary";
+for {i in CELLS: y[i] > 0.5} {
+    printf "%-10d | %-10d | %-10d\n", i, c[i], is_p[i];
+}
+
 
 # 1. Setup Audit Problems
 problem Audit_Min: x_audit, Audit_Conservation, Suppressed_Bounds, Unsuppressed_Fixed, Min_Cell_Val;

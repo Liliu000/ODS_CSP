@@ -29,6 +29,8 @@ var y {CELLS} binary;
 var x_l {CELLS, P_INDEX};
 var x_u {CELLS, P_INDEX};
 
+param y_fixed {CELLS}; #for aftwer when auditing
+
 ### OBJECTIVE ###
 minimize Total_Cost:
     sum {i in CELLS} c[i] * y[i];

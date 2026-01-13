@@ -525,116 +525,160 @@ Row 1 contains the totals for the columns.
 
 
 \section{Implementation Details}
-Given the the mathematical formulation of the Benders decomposition from Section \ref{sec:benders-decomposition-formulation}, we have implemented the master problem and subproblems:
 
 \subsection{AMPL models}
+Given the the mathematical formulation of the Benders decomposition from Section \ref{sec:benders-decomposition-formulation}, we have implemented the master problem and subproblem doing a simple translation to AMPL syntax.
+
 \subsubsection{Data params}
-
+To start, we define the parameters and sets needed for both problems. These are the parameters given in the data file of the problem.
 \begin{lstlisting}
-param ncells;
-param npcells;
-param nconstraints;
-param nnz;
+### SETS AND PARAMETERS ###
+param ncells;					#number of cells
+param npcells;					#number of primary/sensitive cells
+param nconstraints;				#number of table constraints, number of rows of matrix A
+param nnz;						#number of nonzeros in matrix A
 
-set CELLS := 1..ncells;
-set P_INDEX := 1..npcells; 
-set CONSTR := 1..nconstraints;
-set NZ := 1..nnz;
+set CELLS := 1..ncells;			# Index set of all cells
+set P_INDEX := 1..npcells; 		# Index set of primary/sensitive cells
+set CONSTR := 1..nconstraints;	# Index set of table consistency constraints
+set NZ := 1..nnz;				# Index set of nonzero coefficients in sparse matrix A
 
-param a {CELLS};
-param lb {CELLS};
-param ub {CELLS};
-param c {CELLS};
-param is_p {CELLS};
+param a {CELLS};				#original values of cells
+param lb {CELLS};				#lower bounds of cells' value
+param ub {CELLS};				#upper bounds of cells' value
+param c {CELLS};				#cost of suppressing cells
+param is_p {CELLS};				#whether cell is primary/sensitive cell
 
-param p {P_INDEX};      # Maps primary index to cell number
-param plpl {P_INDEX};   # Lower protection level
-param pupl {P_INDEX};   # Upper protection level
+param p {P_INDEX};      		# Maps primary index to cell number
+param plpl {P_INDEX};  		 	# Lower protection level of primary cells
+param pupl {P_INDEX};   		# Upper protection level of primary cells
 
-param b {CONSTR};
-param begconst {1..nconstraints+1};
-param coef {NZ};
-param xcoef {NZ};
-
-\end{verbatim*}
-\subsubsection{Master Problem}
-\begin{verbatim*}
-# --- Benders Cut Storage ---
-param nCUT >= 0 integer;
-param mu_l {CELLS, 1..nCUT};
-param mu_u {CELLS, 1..nCUT};
-param protection_lvl {1..nCUT};
-param gamma {1..nCUT};
-
-
-var y {CELLS} binary;                # Master variables
-
-minimize Total_Cost: sum {i in CELLS} c[i] * y[i];
-
-subject to Primary_Must_Be_Suppressed {k in P_INDEX}:
-    y[p[k]] = 1;
-    
-subj to ProtectionCut {k in 1..nCUT}:
-    sum {i in CELLS} (mu_l[i,k]*(lb[i]-a[i]) 
-    + mu_u[i,k]*(ub[i]-a[i])) * y[i]
-    + gamma[k] * protection_lvl[k]
-    <= 0; 
-
+#To build Ax= b table constraints
+param b {CONSTR};				# right-hand side vector of table constraints 
+param begconst {1..nconstraints+1}; #pointer array for sparse A
+param coef {NZ};				#values of the nonzero coefficients in A
+param xcoef {NZ};				#column indices of the nonzero coefficients in A
 
 \end{lstlisting}
 
 \subsubsection{Subproblem}
+The subproblem is implemented as the dual formulation derived in Section \ref{sec:subproblem-formulation}.
+
+
+The subproblem checks whether the current suppression pattern actually protects each primary cell.
+Its function is to take the suppression decisions from the master as fixed parameters.
+Then, for each primary cell and each protection direction (lower and upper)
+it tests whether there exists a feasible table consistent with the the published cells, the table constraints and the required protection level.
+Therefore, if the subproblem is feasible and bounded, the primary cell is protected, but if the subproblem is unbounded, the protection is violated.
 \begin{lstlisting}
+# ---------------------------------------------------------
+# DUAL SUBPROBLEM 
+# ---------------------------------------------------------
 
-param y_fixed {CELLS};
-param p_index;        # The cell index of the primary being checked
-param L_or_U;         # -1 for Lower protection (min xp), +1 for Upper (max xp)
-param PROTECTION_LVL;
+param y_fixed {CELLS}; # cells suppressed calculated by master 
+param p_index;         # cell index of the primary cell being checked
+param L_or_U;          # decides sign of protection level depending on cut_type
+						#-1 for Lower protection (min xp), +1 for Upper (max xp)
+param PROTECTION_LVL;	# protection level of primary cell being checked
 
-var LAMBDA {CONSTR};               # Dual variables for lower protection
+var LAMBDA {CONSTR};               # Dual variables for right-hand side of table constraints
 var MU_L {CELLS} >= 0;             # Dual variables for lower protection
-var MU_U {CELLS} <= 0;             # Dual variables for lower protection
-var GAMMA >= 0;
+var MU_U {CELLS} <= 0;             # Dual variables for upper protection
+var GAMMA >= 0;						# Dual variable for protection level
 
+# unboundedness indicates violation of protection requirements
 maximize Dual_Objective_Function:
     sum {i in CONSTR} LAMBDA[i]* b[i]
     + sum {i in CELLS} MU_L[i]*(lb[i]-a[i])*y_fixed[i]
     + sum {i in CELLS} MU_U[i]*(ub[i]-a[i])*y_fixed[i]
     + GAMMA * PROTECTION_LVL;
 
-# Dual Restriction: Ensures dual feasibility relative to cell deviations [cite: 584, 596]
+# dual feasibility constraints linking table consistency,
+# cell bounds, and protection requirement for the current primary cell
 subj to Dual_Restriction {i in CELLS}:
     (sum {l in NZ: xcoef[l] == i} coef[l] * (
         sum {r in CONSTR: begconst[r] <= l < begconst[r+1]} LAMBDA[r]
     ))
     + MU_L[i] + MU_U[i] 
     + (if i == p_index then GAMMA * L_or_U else 0) == 0;
-   
+
 \end{lstlisting}
 
+\subsubsection{Master Problem}
+The master problem has the function to decide which cells to suppress using binary variables $y$.
+Its objective is to minimize the total suppression cost. 
+To do so, it forces all primary cells to be suppressed and then it relies on Benders feasibility cuts to ensure that the suppression pattern provides sufficient protection.
+Therefor the master problem explores candidate suppression patterns and accumulates cuts that rule out patterns that do not provide sufficient protection.
+\begin{lstlisting}
+
+# --- Benders Cut Storage ---
+param nCUT >= 0 integer;		#number of cuts created by subproblem
+
+# dual multipliers calculated by subproblem
+param mu_l {CELLS, 1..nCUT};	# dual multipliers for lower protection of cells for each cut 
+param mu_u {CELLS, 1..nCUT};	# dual multiplier for upper constraints of cells for each cut 
+param protection_lvl {1..nCUT};	# protection level of each cut 
+param gamma {1..nCUT};			# dual multiplier for protection level for each cut
+
+
+var y {CELLS} binary;                # cells to suppress
+# ---------------------------------------------------------
+# MASTER PROBLEM
+# ---------------------------------------------------------
+
+# minimize total suppression cost
+minimize Total_Cost: sum {i in CELLS} c[i] * y[i];
+
+# each primary cell must be suppressed
+subject to Primary_Must_Be_Suppressed {k in P_INDEX}:
+    y[p[k]] = 1;
+    
+# ensures protection feasibility for all previously detected violations
+# the benders feasibility cuts are generated from the subproblem dual unbounded rays
+subj to ProtectionCut {k in 1..nCUT}:
+    sum {i in CELLS} (mu_l[i,k]*(lb[i]-a[i]) 
+    + mu_u[i,k]*(ub[i]-a[i])) * y[i]
+    + gamma[k] * protection_lvl[k]
+    <= 0; 
+
+\end{lstlisting}
 
 \subsection{AMPL execution script}
 
 \subsubsection{Initialization}
+To execute the Benders decomposition, we first need to load the model and data files and select solver.
+Then, we need to initialize the parameters and variables needed for the algorithm and indicate the master problem and subproblem with their variables.
 \begin{lstlisting}
-    
+ ### LOAD MODEL AND DATA ###
+reset;
 
-let nCUT := 0;
-param violation_found binary default 0;
-param iteration default 0;
-param epsilon := 1e-7;
-param current_dual_val;
-suffix unbdd OUT;
+model csp_benders2.mod;
+data ../examples/small.ampl;
 
-set cut_types{1..2} := {-1, 1};
-# -1 for lower protection, 1 for upper protection
+### SOLVER OPTIONS ###
+option solver cplex;      
+option display_precision 6;
+option solve_messages 0;  # 1 for debug messages
 
+### INITIALIZATION ###
+let nCUT := 0;					#stores the number of cuts created
+param violation_found binary default 0; # stores if there has been a protection violation
+param iteration default 0;		# stores in which iteration we are
+param epsilon := 1e-7;			# small tolerance for calculations
+param current_dual_val;			# stores the current value of the dual subproblem objective
+suffix unbdd OUT;				# variable needed to get the rays when dual subproblem is unbounded
+
+set cut_types{1..2} := {-1, 1};	# stores the two types of cuts of problem
+								# -1 for lower protection, 1 for upper protection
+
+# defines de problem master and the variables it calculates
 problem Master:
     y,
     Total_Cost,
     Primary_Must_Be_Suppressed,
     ProtectionCut;
     
+# defines de dual subproblem and the variables it calculates
 problem Dual_Problem:
     LAMBDA,
     GAMMA,
@@ -645,7 +689,12 @@ problem Dual_Problem:
 \end{lstlisting}
 
 \subsubsection{Loop}
-
+Once we have initialized everything, we can start the Benders decomposition loop.
+The loop will continue until convergence is reached, which happens when no new protection violations are found in an iteration.
+For each iteration, we first solve the master problem to get a candidate suppression pattern.
+Then, we loop through each primary cell and each protection direction (lower and upper) to check whether the current suppression pattern provides sufficient protection using the dual subproblem.
+If a violation is found (the subproblem is unbounded), we extract the unbounded ray from the dual subproblem and use it to create a new Benders cut to add to the master problem.
+Finally, if no violations were found in the iteration, we declare convergence and exit the loop.
 \begin{lstlisting}
 
 printf "\nStarting Benders Decomposition for CSP\n";
@@ -706,10 +755,14 @@ repeat {
     }
 };
 \end{lstlisting}
-\section{Computational Experiments and Results}
-
+\section{Results}
 
 \subsection{small}
+\begin{lstlisting}
+Benders Finished in 7 iterations
+Total Cuts: 31
+Final Suppression Cost: 14.00
+\end{lstlisting}
 
 \begin{table}[H]
     \centering
@@ -741,7 +794,7 @@ repeat {
     \begin{tabular}{l | c c c c c c c}
              & Col 1 & Col 2 & Col 3 & Col 4 & Col 5 & Col 6 & Col 7 \\
         \toprule
-        Row 1 & x    & x    & X    & 5    & X   & X   & \textbf{361} \\
+        Row 1 & X    & X    & X    & 5    & X   & X   & \textbf{361} \\
         Row 2 & 8    & X  & X   & X   & 29   & 31   & \textbf{252} \\
         Row 3 & X   & 33   & 20   & 60   & 35   & X   & \textbf{203} \\
         Row 4 & X    & X   & X  & 41   & X   & 63   & \textbf{197} \\
@@ -751,11 +804,21 @@ repeat {
     \label{tab:small-suppressed-table}
 \end{table}
 
-
-
-
-
+\begin{lstlisting}
+================ AUDIT RESULTS ================
+CPLEX 22.1.2:               CPLEX 22.1.2:               Cell 1: [282.00, 322.00] vs Protection [285.00, 320.00] -> SAFE
+CPLEX 22.1.2:               CPLEX 22.1.2:               Cell 5: [2.00, 13.00] vs Protection [3.00, 9.00] -> SAFE
+CPLEX 22.1.2:               CPLEX 22.1.2:               Cell 9: [58.00, 78.00] vs Protection [58.00, 74.00] -> SAFE
+CPLEX 22.1.2:               CPLEX 22.1.2:               Cell 24: [25.00, 41.00] vs Protection [27.00, 39.00] -> SAFE
+=============================================
+\end{lstlisting}
 \subsection{Example\_2D}
+
+\begin{lstlisting}
+Benders Finished in 2 iterations
+Total Cuts: 15
+Final Suppression Cost: 0.03
+\end{lstlisting}
 
 \begin{table}[H]
     \centering
@@ -791,10 +854,22 @@ repeat {
     \label{tab:example2D-suppressed-table}
 \end{table}
 
-
+\begin{lstlisting}
+================ AUDIT RESULTS ================
+CPLEX 22.1.2:               CPLEX 22.1.2:               Cell 16: [0.00, 530.00] vs Protection [353.00, 423.00] -> SAFE
+CPLEX 22.1.2:               CPLEX 22.1.2:               Cell 22: [0.00, 530.00] vs Protection [123.00, 151.00] -> SAFE
+CPLEX 22.1.2:               CPLEX 22.1.2:               Cell 27: [0.00, 503.00] vs Protection [276.00, 321.00] -> SAFE
+CPLEX 22.1.2:               CPLEX 22.1.2:               Cell 30: [0.00, 503.00] vs Protection [191.00, 233.00] -> SAFE
+=============================================
+\end{lstlisting}
 
 
 \subsection{targus}
+\begin{lstlisting}
+Benders Finished in 7 iterations
+Total Cuts: 135
+Final Suppression Cost: 2440.00
+\end{lstlisting}
 
 \begin{table}[H]
     \centering
@@ -806,20 +881,26 @@ repeat {
         21         & 1          & 1         \\
         24         & 1          & 1         \\
         25         & 1          & 1         \\
+
         27         & 1          & 1         \\
         37         & 1          & 0         \\
         38         & 1          & 1         \\
         39         & 1          & 1         \\
         42         & 1          & 1         \\
+        
         45         & 1          & 1         \\
         51         & 1          & 1         \\
         52         & 1          & 1         \\
         78         & 611        & 0         \\
+        79         & 38         & 0         \\
+        
+        80         & 113        & 0         \\
+        81         & 298        & 0         \\
         87         & 715        & 0         \\
-        99         & 298        & 0         \\
-        106        & 432        & 0         \\
+        88         & 466        & 0         \\
         133        & 14         & 1         \\
-        134        & 172        & 0  \\
+        
+        134        & 172        & 0         \\
     \end{tabular}
     \caption{Table of Cells to be Suppressed in Targus Instance}
     \label{tab:targus-suppressed-cells}
@@ -830,22 +911,22 @@ repeat {
     \begin{tabular}{l | c c c c c c c c c}
          & Row 1 & Row 2 & Row 3 & Row 4 & Row 5 & Row 6 & Row 7 & Row 8 & Row 9\\
         \toprule
-        Col 1 & 16847261.84 & x & x & 2711808 & 2320534 & 2505042.58 & 2799074.26 & 6510758 & 0 \\
-        Col 2 & 4373279     & x & x & 719049 & 659680 & 688962 & 756529 & 1549049 & 0 \\
-        Col 3 & 1986129     & x & x & 398062 & 348039 & 354711 & 418778 & 466529 & 0 \\
+        Col 1 & 16847261.84 & X & X & 2711808 & 2320534 & 2505042.58 & 2799074.26 & 6510758 & 0 \\
+        Col 2 & 4373279     & X & X & 719049 & 659680 & 688962 & 756529 & 1549049 & 0 \\
+        Col 3 & 1986129     & X & X & 398062 & 348039 & 354711 & 418778 & 466529 & 0 \\
         Col 4 & 1808861     & 0 & 0 & 223990 & 221332 & 241913 & 258233 & 863393 & 0 \\
         Col 5 & 578289      & 0 & 0 & 96997 & 90309 & 92338 & 79518 & 219127 & 0 \\
-        Col 6 & 3703896     & x & x & 642238 & x     & 534147 & 620392 & 1392096 & 0 \\
-        Col 7 & 124336      & x & 0 & 36311 & 32132 & 25770 & 18150 & x & 0 \\
-        Col 8 & 526279      & 0 & 0 & 93589 & 94957 & 110930 & 81799 & x & 0 \\
-        Col 9 & 2234995     & x & x & 345803 & 251358 & x & 303377 & 1083254 & 0 \\
+        Col 6 & 3703896     & X & X & 642238 & X     & 534147 & 620392 & 1392096 & 0 \\
+        Col 7 & 124336      & X & 0 & 36311 & X     & 25770 & 18150 & X & 0 \\
+        Col 8 & 526279      & 0 & 0 & 93589 & X      & 110930 & 81799 & X & 0 \\
+        Col 9 & 2234995     & X & X & 345803 & X     & 251188 & 303377 & 1083254 & 0 \\
         Col 10 & 818286     & 0 & 0 & 166535 & 136556 & 146259 & 217066 & 151870 & 0 \\
         Col 11 & 4576115.84 & 0 & 0 & 648972 & 543570 & 663896.58 & 775132.26 & 1944545 & 0 \\
         Col 12 & 485326     & 0 & 0 & 63767 & 75442 & 87305 & 59953 & 198859 & 0 \\
         Col 13 & 3664559.84 & 0 & 0 & 537911 & 430851 & 515019.58 & 643762.26 & 1537016 & 0 \\
         Col 14 & 426230     & 0 & 0 & 47294 & 37277 & 61572 & 71417 & 208670 & 0 \\
-        Col 15 & 4193971    & 0 & x & 701549 & x    & 618037 & 647021 & 1625068 & 0 \\
-        Col 16 & 2752743    & 0 & x & 488613 & 392395 & x & 402925 & 1105305 & 0 \\
+        Col 15 & 4193971    & 0 & X & 701549 & X    & 618037 & 647021 & 1625068 & 0 \\
+        Col 16 & 2752743    & 0 & X & 488613 & X    & 363490 & 402925 & 1105305 & 0 \\
         Col 17 & 1441228    & 0 & 0 & 212936 & 209886 & 254547 & 244096 & 519763 & 0 \\
         Col 18 & 0          & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
       \end{tabular}
@@ -853,89 +934,10 @@ repeat {
     \label{tab:targus-suppressed-table}
 \end{table}
 
-% =============================
-% 9. REFERENCES
-% =============================
-\section{References}
 
-% load bibliography file
-% \bibliographystyle{plain}
-% \bibliography{citations}
+\bibliographystyle{plain} % Options: alpha, plain, unsrt, etc.
+\bibliography{citations}  % Points to citations.bib
 
-
-
-% \begin{itemize}
-%   \item Jain, A. K., and Dubes, R. C. (1988). \textit{Algorithms for Clustering Data}. Prentice Hall.
-%   \item Kaufman, L., and Rousseeuw, P. J. (1990). \textit{Finding Groups in Data: An Introduction to Cluster Analysis}.
-%   \item UCI Machine Learning Repository: \url{https://archive.ics.uci.edu/}
-%   \item Tocto Inga, P. M. (2012). \textit{Comparación de los algoritmos Prim y Kruskal [Tesis de licenciatura, Universidad Nacional de Ingeniería, Facultad de Ciencias]}. Universidad Nacional de Ingeniería.
-% \end{itemize}
-
-\newpage
-
-
-% =============================
-% APPENDIX
-% =============================
-
-
-
-% Listing of AMPL files
-\begin{appendix}
-\section{AMPL Files}
-\label{apdx:ampl-files}
-\begin{lstlisting}[language=Python, caption=\texttt{kmedoid.mod}]
-param n; # observations
-param k; # clusters
-set M:={1..n};
-
-param d{M,M};
-var x{M,M} binary;
-
-
-minimize f: sum{i in M}
-    sum{j in M} d[i,j]*x[i,j];
-
-subject to one_cluster{i in M}:
-    sum{j in M} x[i,j] = 1;
-
-subject to k_clusters:
-    sum{j in M} x[j,j] = k;
-
-subject to cluster_belongs{i in M, j in M}:
-    x[j,j] >= x[i,j];
-\end{lstlisting}
-
-\begin{lstlisting}[language=Python, caption=\texttt{kmedoid.run}]
-# Reset enviroment
-reset;
-
-# Load model and data
-model kmedoids.mod;
-data kmedoids.dat;
-
-option solver cplex;
-solve;
-
-display _solve_elapsed_time;
-
-printf {i in M, j in M} "%s,%s,%i\n", i, j, x[i,j] > "x_matrix.csv";
-\end{lstlisting}
-
-\begin{lstlisting}[language=Python, caption=Python function to generate \texttt{kmedoid.dat} ]
-def generate_dat(N, D, k, filename='AMPL/kmedoid.dat'):
-    with open(filename, 'w') as f:
-        f.write("#Define sets\n")
-        f.write(f"param n := {N};\n")
-        f.write(f"param k := {k};\n")
-
-        f.write("#Define parameters\n")
-        f.write(f"param d: {'\t'.join([str(j+1) for j in range(N)])} :=\n")
-        for i in range(N):
-            f.write(f" {i+1} " + ' '.join(f"{D[i][j]:.6f}" for j in range(N)) + "\n")
-        f.write(";\n")
-
-    \end{lstlisting}
-  \end{appendix}
+\nocite{castro_tabular, castro_benders_ampl}
 
 \end{document}

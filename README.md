@@ -13,14 +13,7 @@ xcoef[l],  begconst[i] ≤ l ≤ begconst[i+1]-1  gives the columns of A where t
 Instance example_2D.ampl contains a 5x6 bidimensional table (including total row and column), where the cells are sorted rowwise, assuming that the total row and total column are the first row and column. The other files contain two additional small instances.
  
 # Structure
-- example: csp problem data examples
--   csp_benders.mod: contains subproblem and master problem (needs to specify bender cuts-doesnot run)
--   csp_benders.run: script to implement solution
+- CODES: folder with AMPL codes for solving CSP implementing benders (csp_benders) or MILP (csp_milp), both audit the answers via csp_check
+- examples: folder with data examples 
+- report: latex files used to create report
 
-ONLY DEV: 
--   csp_sol_gemini.txt: solution to example_2D of gemini
--   Advice teacher: First tries to debug ample use unitary cost 
-
-# Git warnings??
-warning: in the working copy of 'examples/example_2D.ampl', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'examples/targus.ampl', LF will be replaced by CRLF the next time Git touches it

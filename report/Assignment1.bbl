@@ -1,3 +1,13 @@
-\begin{thebibliography}{}
+\begin{thebibliography}{1}
+
+\bibitem{castro_benders_ampl}
+Jordi Castro.
+\newblock Optimization in data science: Statistical data protection: Implementing benders algorithm using ampl.
+\newblock Lecture notes, Universitat Politècnica de Catalunya, n.d.
+
+\bibitem{castro_tabular}
+Jordi Castro.
+\newblock Optimization in data science: Statistical data protection: Tabular data.
+\newblock Lecture notes, Universitat Politècnica de Catalunya, n.d.
 
 \end{thebibliography}
